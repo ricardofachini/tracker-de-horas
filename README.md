@@ -42,8 +42,13 @@ assets/
   style.qss       tema claro estilo Adwaita
 ```
 
-## Limitações conhecidas (esqueleto)
+## Roadmap
 
-- Turnos que cruzam a meia-noite não são tratados.
-- Não é possível editar/remover um registro de ponto já feito.
-- Tema escuro ainda não implementado.
+- [ ] **Folha de ponto mensal** — visualização tipo planilha do mês atual:
+      uma linha por dia com entrada, saída e total de horas trabalhadas
+      (provável `QTableWidget`/`QTableView` numa nova página "Folha").
+- [ ] Editar/remover registros de ponto já feitos.
+- [ ] Gráficos por semana e metas de jornada nos Relatórios.
+- [ ] Exportação de dados (CSV).
+- [ ] Tema escuro seguindo o sistema.
+- [ ] Tratar turnos que cruzam a meia-noite.

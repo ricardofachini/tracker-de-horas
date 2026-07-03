@@ -195,24 +195,28 @@ void TodayPage::refresh() {
     m_btnResume->setVisible(status == DayRecord::Status::OnBreak);
     m_btnOut->setVisible(status == DayRecord::Status::Working || status == DayRecord::Status::OnBreak);
 
+    QString stateName;
     switch (status) {
     case DayRecord::Status::Off:
         m_statusPill->setText(QStringLiteral("Fora do expediente"));
-        setUiState(m_statusPill, "state", QStringLiteral("off"));
+        stateName = QStringLiteral("off");
         break;
     case DayRecord::Status::Working:
         m_statusPill->setText(QStringLiteral("● Trabalhando"));
-        setUiState(m_statusPill, "state", QStringLiteral("working"));
+        stateName = QStringLiteral("working");
         break;
     case DayRecord::Status::OnBreak:
         m_statusPill->setText(QStringLiteral("● Em pausa"));
-        setUiState(m_statusPill, "state", QStringLiteral("break"));
+        stateName = QStringLiteral("break");
         break;
     case DayRecord::Status::Done:
         m_statusPill->setText(QStringLiteral("✓ Expediente encerrado"));
-        setUiState(m_statusPill, "state", QStringLiteral("done"));
+        stateName = QStringLiteral("done");
         break;
     }
+    // A mesma propriedade dinâmica colore a pílula e o timer grande via QSS.
+    setUiState(m_statusPill, "state", stateName);
+    setUiState(m_workedLabel, "state", stateName);
 
     m_punchList->clear();
     for (const Punch& p : day.punches)

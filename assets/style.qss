@@ -8,7 +8,7 @@
 }
 
 QMainWindow, QStackedWidget, QScrollArea, QScrollArea > QWidget > QWidget {
-    background: #fafaf9;
+    background: #f5f5f4;
 }
 
 /* ------------------------------------------------------------- Sidebar */
@@ -50,8 +50,8 @@ QPushButton[nav="true"]:checked {
 
 QFrame[card="true"] {
     background: #ffffff;
-    border: 1px solid #e8e6e3;
-    border-radius: 12px;
+    border: 1px solid #eeece9;
+    border-radius: 14px;
 }
 QFrame[card="true"] QLabel { background: transparent; }
 
@@ -73,6 +73,11 @@ QLabel#workedLabel {
     font-size: 54px;
     font-weight: 700;
 }
+/* O timer acompanha a cor do status (propriedade dinâmica "state"). */
+QLabel#workedLabel[state="off"]     { color: #a6a1ab; }
+QLabel#workedLabel[state="working"] { color: #1c8656; }
+QLabel#workedLabel[state="break"]   { color: #96650a; }
+QLabel#workedLabel[state="done"]    { color: #1a5fb4; }
 
 QLabel#statValue { font-size: 28px; font-weight: 800; }
 

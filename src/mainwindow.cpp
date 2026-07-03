@@ -3,11 +3,28 @@
 #include "pages.h"
 #include "todaypage.h"
 
+#include <QGraphicsOpacityEffect>
 #include <QHBoxLayout>
 #include <QLabel>
+#include <QPropertyAnimation>
 #include <QPushButton>
 #include <QStackedWidget>
 #include <QVBoxLayout>
+
+// Fade-in da página recém-exibida: anima a propriedade "opacity" de um
+// efeito temporário. DeleteWhenStopped faz o Qt liberar a animação sozinho.
+static void fadeIn(QWidget* page) {
+    auto* effect = new QGraphicsOpacityEffect(page);
+    page->setGraphicsEffect(effect);
+    auto* animation = new QPropertyAnimation(effect, "opacity", page);
+    animation->setDuration(180);
+    animation->setStartValue(0.0);
+    animation->setEndValue(1.0);
+    animation->setEasingCurve(QEasingCurve::OutCubic);
+    QObject::connect(animation, &QPropertyAnimation::finished, page,
+                     [page] { page->setGraphicsEffect(nullptr); });
+    animation->start(QAbstractAnimation::DeleteWhenStopped);
+}
 
 MainWindow::MainWindow() {
     setWindowTitle(QStringLiteral("Tracker Horas"));
@@ -45,12 +62,15 @@ MainWindow::MainWindow() {
         button->setAutoExclusive(true);
         button->setCursor(Qt::PointingHandCursor);
         connect(button, &QPushButton::clicked, this, [this, index] {
+            if (m_stack->currentIndex() == index)
+                return;
             // Páginas de resumo são recalculadas ao entrar nelas.
             if (index == 1)
                 m_historyPage->refresh();
             else if (index == 2)
                 m_reportsPage->refresh();
             m_stack->setCurrentIndex(index);
+            fadeIn(m_stack->currentWidget());
         });
         sideLayout->addWidget(button);
         return button;
