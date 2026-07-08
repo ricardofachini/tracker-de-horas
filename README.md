@@ -6,8 +6,11 @@ escrito em C++20 com Qt 6 Widgets e visual inspirado no Adwaita/GNOME.
 ## Funcionalidades
 
 - **Hoje** — relógio de ponto ao vivo: registrar entrada, pausa, retorno e
-  saída, com contador de horas trabalhadas atualizado a cada segundo, além da
-  lista de tarefas do dia (adicionar, concluir, limpar concluídas).
+  saída, com contador de horas trabalhadas atualizado a cada segundo, barra
+  de progresso da jornada de 8h, além da lista de tarefas do dia (adicionar,
+  concluir, limpar concluídas).
+- **Folha** — folha de ponto mensal em formato de planilha: entrada, saída,
+  pausas, horas trabalhadas e tarefas por dia, com navegação entre meses.
 - **Histórico** — lista dos dias registrados com total de horas e tarefas.
 - **Relatórios** — resumo de horas de hoje, da semana, do mês e média diária
   (gráficos e exportação planejados).
@@ -34,21 +37,28 @@ src/
   main.cpp        ponto de entrada, estilo global
   model.{h,cpp}   tipos de domínio: Punch, Task, DayRecord
   storage.{h,cpp} persistência em JSON
+  theme.*         paleta clara/escura e geração do QSS a partir de tokens
   widgets.h       helpers de UI (cards, labels com papel, estado dinâmico)
+  card.*          card com sombra e hover animado
+  icons.h         ícones desenhados com QPainter
   todaypage.*     página principal (ponto + tarefas)
+  timesheetmodel.* modelo da folha mensal (model/view)
+  timesheetpage.*  página Folha (QTableView)
   pages.*         Histórico e Relatórios
   mainwindow.*    janela com sidebar de navegação
 assets/
-  style.qss       tema claro estilo Adwaita
+  style.qss       folha de estilo com tokens (@cor), estilo Adwaita
 ```
 
 ## Roadmap
 
-- [ ] **Folha de ponto mensal** — visualização tipo planilha do mês atual:
-      uma linha por dia com entrada, saída e total de horas trabalhadas
-      (provável `QTableWidget`/`QTableView` numa nova página "Folha").
+- [x] **Folha de ponto mensal** — visualização tipo planilha do mês:
+      uma linha por dia com entrada, saída, pausas, horas trabalhadas e
+      tarefas, com navegação entre meses e total mensal (página "Folha",
+      `QAbstractTableModel` + `QTableView`).
 - [ ] Editar/remover registros de ponto já feitos.
 - [ ] Gráficos por semana e metas de jornada nos Relatórios.
 - [ ] Exportação de dados (CSV).
-- [ ] Tema escuro seguindo o sistema.
+- [x] Tema escuro com alternância por botão na sidebar (preferência salva;
+      seguir o tema do sistema automaticamente fica para depois).
 - [ ] Tratar turnos que cruzam a meia-noite.

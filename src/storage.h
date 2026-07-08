@@ -11,6 +11,9 @@ public:
     // Retorna o registro do dia, criando um vazio se não existir.
     DayRecord& day(const QDate& date);
 
+    // Consulta somente-leitura: nullptr se o dia não tem registro.
+    const DayRecord* find(const QDate& date) const;
+
     // Todos os dias registrados, do mais recente ao mais antigo.
     QList<DayRecord> allDays() const;
 

@@ -8,6 +8,7 @@ class QLabel;
 class QLineEdit;
 class QListWidget;
 class QListWidgetItem;
+class QProgressBar;
 class QPushButton;
 class QTimer;
 
@@ -33,6 +34,9 @@ private:
     QLabel* m_clockLabel;
     QLabel* m_statusPill;
     QLabel* m_workedLabel;
+    QProgressBar* m_journeyBar;
+    QLabel* m_journeyCaption;
+    bool m_journeyComplete = false;
     QPushButton* m_btnIn;
     QPushButton* m_btnBreak;
     QPushButton* m_btnResume;

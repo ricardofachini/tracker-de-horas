@@ -1,7 +1,7 @@
 #include "mainwindow.h"
+#include "theme.h"
 
 #include <QApplication>
-#include <QFile>
 #include <QLocale>
 #include <QStyleFactory>
 
@@ -17,9 +17,7 @@ int main(int argc, char* argv[]) {
     app.setStyle(QStyleFactory::create(QStringLiteral("Fusion")));
     QLocale::setDefault(QLocale(QLocale::Portuguese, QLocale::Brazil));
 
-    QFile qss(QStringLiteral(":/style.qss"));
-    if (qss.open(QIODevice::ReadOnly))
-        app.setStyleSheet(QString::fromUtf8(qss.readAll()));
+    Theme::apply(&app, Theme::savedMode());
 
     MainWindow window;
     window.show();

@@ -34,6 +34,38 @@ int DayRecord::workedSeconds(const QTime& now) const {
     return qMax(total, 0);
 }
 
+int DayRecord::breakSeconds(const QTime& now) const {
+    int total = 0;
+    QTime start;
+    bool onBreak = false;
+    for (const Punch& p : punches) {
+        if (p.type == PunchType::BreakStart && !onBreak) {
+            start = p.time;
+            onBreak = true;
+        } else if ((p.type == PunchType::BreakEnd || p.type == PunchType::Out) && onBreak) {
+            total += start.secsTo(p.time);
+            onBreak = false;
+        }
+    }
+    if (onBreak && now.isValid())
+        total += start.secsTo(now);
+    return qMax(total, 0);
+}
+
+QTime DayRecord::firstIn() const {
+    for (const Punch& p : punches)
+        if (p.type == PunchType::In)
+            return p.time;
+    return {};
+}
+
+QTime DayRecord::lastOut() const {
+    for (auto it = punches.crbegin(); it != punches.crend(); ++it)
+        if (it->type == PunchType::Out)
+            return it->time;
+    return {};
+}
+
 QString punchLabel(PunchType type) {
     switch (type) {
     case PunchType::In: return QStringLiteral("Entrada");

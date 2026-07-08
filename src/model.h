@@ -31,6 +31,12 @@ struct DayRecord {
     // Segundos trabalhados. Se o expediente ainda está aberto, `now`
     // fecha o intervalo em andamento (passe QTime() para ignorá-lo).
     int workedSeconds(const QTime& now = QTime()) const;
+
+    // Segundos em pausa, com a mesma convenção de `now`.
+    int breakSeconds(const QTime& now = QTime()) const;
+
+    QTime firstIn() const;  // primeira entrada do dia (QTime() se não houver)
+    QTime lastOut() const;  // última saída do dia (QTime() se não houver)
 };
 
 QString punchLabel(PunchType type);

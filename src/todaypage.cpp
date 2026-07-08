@@ -8,9 +8,14 @@
 #include <QLineEdit>
 #include <QListWidget>
 #include <QLocale>
+#include <QProgressBar>
 #include <QPushButton>
 #include <QTimer>
 #include <QVBoxLayout>
+
+// Meta de jornada diária usada pela barra de progresso (fixa por enquanto;
+// virará configuração do usuário no futuro).
+static constexpr int kJourneySeconds = 8 * 3600;
 
 TodayPage::TodayPage(Storage* storage, QWidget* parent)
     : QWidget(parent), m_storage(storage) {
@@ -67,6 +72,18 @@ TodayPage::TodayPage(Storage* storage, QWidget* parent)
         buttons->addWidget(b);
     buttons->addStretch();
     heroLayout->addLayout(buttons);
+
+    heroLayout->addSpacing(14);
+    m_journeyBar = new QProgressBar;
+    m_journeyBar->setObjectName("journeyBar");
+    m_journeyBar->setRange(0, kJourneySeconds);
+    m_journeyBar->setValue(0);
+    m_journeyBar->setTextVisible(false);
+    m_journeyBar->setFixedHeight(6);
+    m_journeyBar->setProperty("complete", QStringLiteral("false"));
+    heroLayout->addWidget(m_journeyBar);
+    m_journeyCaption = makeLabel({}, "muted");
+    heroLayout->addWidget(m_journeyCaption, 0, Qt::AlignHCenter);
     root->addWidget(hero);
 
     // Duas colunas: registros de ponto | tarefas do dia.
@@ -251,5 +268,19 @@ void TodayPage::tick() {
         return;
     }
     m_clockLabel->setText(now.toString(QStringLiteral("HH:mm:ss")));
-    m_workedLabel->setText(formatDuration(today().workedSeconds(now.time()), true));
+
+    const int worked = today().workedSeconds(now.time());
+    m_workedLabel->setText(formatDuration(worked, true));
+
+    m_journeyBar->setValue(qMin(worked, kJourneySeconds));
+    const bool complete = worked >= kJourneySeconds;
+    m_journeyCaption->setText(
+        complete ? QStringLiteral("meta de 8h atingida ✓")
+                 : QStringLiteral("faltam %1 para a meta de 8h")
+                       .arg(formatDuration(kJourneySeconds - worked)));
+    if (complete != m_journeyComplete) {  // repolir o QSS só quando muda
+        m_journeyComplete = complete;
+        setUiState(m_journeyBar, "complete", complete ? QStringLiteral("true")
+                                                      : QStringLiteral("false"));
+    }
 }

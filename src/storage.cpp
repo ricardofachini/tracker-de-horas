@@ -39,6 +39,11 @@ DayRecord& Storage::day(const QDate& date) {
     return record;
 }
 
+const DayRecord* Storage::find(const QDate& date) const {
+    const auto it = m_days.constFind(date);
+    return it == m_days.cend() ? nullptr : &it.value();
+}
+
 QList<DayRecord> Storage::allDays() const {
     QList<DayRecord> days = m_days.values();
     std::sort(days.begin(), days.end(),

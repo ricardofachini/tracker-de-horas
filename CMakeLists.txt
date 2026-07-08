@@ -11,8 +11,13 @@ qt_add_executable(tracker-horas
     src/main.cpp
     src/model.h src/model.cpp
     src/storage.h src/storage.cpp
+    src/theme.h src/theme.cpp
+    src/card.h src/card.cpp
+    src/icons.h
     src/widgets.h
     src/todaypage.h src/todaypage.cpp
+    src/timesheetmodel.h src/timesheetmodel.cpp
+    src/timesheetpage.h src/timesheetpage.cpp
     src/pages.h src/pages.cpp
     src/mainwindow.h src/mainwindow.cpp
 )

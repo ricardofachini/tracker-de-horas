@@ -1,9 +1,13 @@
 #include "mainwindow.h"
 
+#include "icons.h"
 #include "pages.h"
+#include "theme.h"
+#include "timesheetpage.h"
 #include "todaypage.h"
 
-#include <QGraphicsOpacityEffect>
+#include <QApplication>
+
 #include <QHBoxLayout>
 #include <QLabel>
 #include <QPropertyAnimation>
@@ -11,18 +15,17 @@
 #include <QStackedWidget>
 #include <QVBoxLayout>
 
-// Fade-in da página recém-exibida: anima a propriedade "opacity" de um
-// efeito temporário. DeleteWhenStopped faz o Qt liberar a animação sozinho.
-static void fadeIn(QWidget* page) {
-    auto* effect = new QGraphicsOpacityEffect(page);
-    page->setGraphicsEffect(effect);
-    auto* animation = new QPropertyAnimation(effect, "opacity", page);
+// Entrada da página nova: um deslize curto para cima, animando "pos".
+// De propósito NÃO usa QGraphicsOpacityEffect: efeito gráfico no pai +
+// sombras nos cards filhos = efeitos aninhados, que o Qt Widgets não
+// suporta direito e renderiza com glitches.
+static void slideIn(QWidget* page) {
+    const QPoint end = page->pos();  // posição final, definida pelo stack
+    auto* animation = new QPropertyAnimation(page, "pos", page);
     animation->setDuration(180);
-    animation->setStartValue(0.0);
-    animation->setEndValue(1.0);
+    animation->setStartValue(end + QPoint(0, 16));
+    animation->setEndValue(end);
     animation->setEasingCurve(QEasingCurve::OutCubic);
-    QObject::connect(animation, &QPropertyAnimation::finished, page,
-                     [page] { page->setGraphicsEffect(nullptr); });
     animation->start(QAbstractAnimation::DeleteWhenStopped);
 }
 
@@ -32,11 +35,13 @@ MainWindow::MainWindow() {
     setMinimumSize(920, 620);
 
     m_todayPage = new TodayPage(&m_storage);
+    m_sheetPage = new TimesheetPage(&m_storage);
     m_historyPage = new HistoryPage(&m_storage);
     m_reportsPage = new ReportsPage(&m_storage);
 
     m_stack = new QStackedWidget;
     m_stack->addWidget(m_todayPage);
+    m_stack->addWidget(m_sheetPage);
     m_stack->addWidget(m_historyPage);
     m_stack->addWidget(m_reportsPage);
 
@@ -55,35 +60,55 @@ MainWindow::MainWindow() {
     sideLayout->addWidget(appSubtitle);
     sideLayout->addSpacing(24);
 
-    auto addNav = [this, sideLayout](const QString& text, int index) {
+    auto addNav = [this, sideLayout](const QString& text, NavGlyph glyph, int index) {
         auto* button = new QPushButton(text);
         button->setProperty("nav", true);
         button->setCheckable(true);
         button->setAutoExclusive(true);
         button->setCursor(Qt::PointingHandCursor);
+        // O QIcon tem estado Off/On: o Qt troca a cor sozinho ao marcar o botão.
+        button->setIconSize(QSize(20, 20));
+        m_navButtons.append({button, glyph});
         connect(button, &QPushButton::clicked, this, [this, index] {
             if (m_stack->currentIndex() == index)
                 return;
             // Páginas de resumo são recalculadas ao entrar nelas.
             if (index == 1)
-                m_historyPage->refresh();
+                m_sheetPage->refresh();
             else if (index == 2)
+                m_historyPage->refresh();
+            else if (index == 3)
                 m_reportsPage->refresh();
             m_stack->setCurrentIndex(index);
-            fadeIn(m_stack->currentWidget());
+            slideIn(m_stack->currentWidget());
         });
         sideLayout->addWidget(button);
         return button;
     };
-    addNav(QStringLiteral("Hoje"), 0)->setChecked(true);
-    addNav(QStringLiteral("Histórico"), 1);
-    addNav(QStringLiteral("Relatórios"), 2);
+    addNav(QStringLiteral("Hoje"), NavGlyph::Today, 0)->setChecked(true);
+    addNav(QStringLiteral("Folha"), NavGlyph::Sheet, 1);
+    addNav(QStringLiteral("Histórico"), NavGlyph::History, 2);
+    addNav(QStringLiteral("Relatórios"), NavGlyph::Reports, 3);
 
     sideLayout->addStretch();
+
+    m_themeButton = new QPushButton;
+    m_themeButton->setProperty("nav", true);
+    m_themeButton->setCursor(Qt::PointingHandCursor);
+    m_themeButton->setIconSize(QSize(20, 20));
+    connect(m_themeButton, &QPushButton::clicked, this, [this] {
+        Theme::toggle(qApp);       // regenera o QSS e repolimenta tudo
+        refreshThemeIcons();       // ícones são pixmaps: precisam ser recriados
+    });
+    sideLayout->addWidget(m_themeButton);
+    sideLayout->addSpacing(6);
+
     auto* footer = new QLabel(QStringLiteral("v0.1 · dados salvos localmente"));
     footer->setObjectName("appSubtitle");
     footer->setWordWrap(true);
     sideLayout->addWidget(footer);
+
+    refreshThemeIcons();
 
     auto* central = new QWidget;
     auto* layout = new QHBoxLayout(central);
@@ -92,4 +117,12 @@ MainWindow::MainWindow() {
     layout->addWidget(sidebar);
     layout->addWidget(m_stack, 1);
     setCentralWidget(central);
+}
+
+void MainWindow::refreshThemeIcons() {
+    for (const auto& [button, glyph] : m_navButtons)
+        button->setIcon(navIcon(glyph));
+    m_themeButton->setIcon(themeToggleIcon());
+    m_themeButton->setText(Theme::isDark() ? QStringLiteral("Modo claro")
+                                           : QStringLiteral("Modo escuro"));
 }
