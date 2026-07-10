@@ -62,6 +62,19 @@ QLabel[role="h1"] { font-size: 26px; font-weight: 800; }
 QLabel[role="h2"] { font-size: 15px; font-weight: 700; }
 QLabel[role="muted"] { font-size: 13px; color: @textMuted; }
 
+QLabel[role="punchTime"] {
+    font-family: "Ubuntu Mono", "DejaVu Sans Mono", monospace;
+    font-weight: 700;
+    color: @textSoft;
+}
+
+QLabel[role="taskTime"] { font-size: 12px; color: @textMuted; }
+QLabel[role="taskTime"][running="true"] {
+    font-family: "Ubuntu Mono", "DejaVu Sans Mono", monospace;
+    font-weight: 700;
+    color: @successText;
+}
+
 QLabel#clockNow {
     font-family: "Ubuntu Mono", "DejaVu Sans Mono", monospace;
     font-size: 20px;
@@ -133,6 +146,27 @@ QPushButton[kind="ghost"] {
 }
 QPushButton[kind="ghost"]:hover { color: @dangerText; }
 
+/* Variante baixa do neutro, para rodapés e barras compactas. */
+QPushButton[kind="compact"] {
+    background: @surface;
+    border: 1px solid @inputBorder;
+    border-radius: 10px;
+    padding: 7px 14px;
+    font-weight: 600;
+    color: @textBody;
+}
+QPushButton[kind="compact"]:hover { background: @hoverSolid; }
+QPushButton[kind="compact"]:pressed { background: @pressedSolid; }
+
+/* Botões de ação nas linhas de lista (editar, remover, iniciar, pausar). */
+QToolButton[rowAction="true"] {
+    border: none;
+    border-radius: 7px;
+    background: transparent;
+}
+QToolButton[rowAction="true"]:hover { background: @hover; }
+QToolButton[rowAction="true"]:pressed { background: @pressedSolid; }
+
 /* -------------------------------------------------------------- Jornada */
 
 QProgressBar#journeyBar {
@@ -158,14 +192,66 @@ QLineEdit {
 }
 QLineEdit:focus { border: 2px solid @accent; padding: 8px 11px; }
 
+QTimeEdit {
+    background: @surface;
+    border: 1px solid @inputBorder;
+    border-radius: 10px;
+    padding: 8px 12px;
+    selection-background-color: @accent;
+    selection-color: #ffffff;
+}
+QTimeEdit:focus { border: 2px solid @accent; padding: 7px 11px; }
+
+QComboBox {
+    background: @surface;
+    border: 1px solid @inputBorder;
+    border-radius: 10px;
+    padding: 8px 12px;
+}
+QComboBox:focus { border: 2px solid @accent; padding: 7px 11px; }
+QComboBox::drop-down { border: none; width: 28px; }
+QComboBox::down-arrow { image: url(:/arrow-down.svg); width: 10px; height: 6px; }
+QComboBox QAbstractItemView {
+    background: @surface;
+    border: 1px solid @surfaceBorder;
+    border-radius: 8px;
+    padding: 4px;
+    outline: none;
+    selection-background-color: @accentSoft;
+    selection-color: @accentStrong;
+}
+
+/* --------------------------------------------------------------- Diálogos */
+
+QDialog { background: @window; }
+
+/* Checkbox das tarefas (mesmo desenho do indicador das listas). */
+QCheckBox { background: transparent; spacing: 10px; color: @textBody; }
+QCheckBox[done="true"] { color: @textMuted; }
+QCheckBox::indicator {
+    width: 18px;
+    height: 18px;
+    border-radius: 5px;
+    border: 2px solid @faint;
+    background: @surface;
+}
+QCheckBox::indicator:hover { border-color: @accent; }
+QCheckBox::indicator:checked {
+    background: @accent;
+    border-color: @accent;
+    image: url(:/check.svg);
+}
+
 /* --------------------------------------------------------------- Listas */
 
 QListWidget {
     background: transparent;
     border: none;
 }
+/* As linhas são widgets embutidos (setItemWidget); padding no item
+   deslocaria/cortaria o widget — o respiro vem das margens da linha. */
 QListWidget::item {
-    padding: 9px 6px;
+    padding: 0px;
     border-bottom: 1px solid @separator;
     color: @textBody;
 }

@@ -1,10 +1,12 @@
 #include "pages.h"
 
 #include "storage.h"
+#include "weekchart.h"
 #include "widgets.h"
 
 #include <QHBoxLayout>
 #include <QLocale>
+#include <QPushButton>
 #include <QScrollArea>
 #include <QVBoxLayout>
 
@@ -113,17 +115,82 @@ ReportsPage::ReportsPage(Storage* storage, QWidget* parent)
     root->addLayout(tiles);
     root->addSpacing(14);
 
+    // Gráfico de barras da semana, com navegação ‹ › como na Folha.
+    auto* chartCard = makeCard();
+    auto* chartLayout = new QVBoxLayout(chartCard);
+    chartLayout->setContentsMargins(20, 18, 20, 16);
+    chartLayout->setSpacing(10);
+
+    auto* chartHeader = new QHBoxLayout;
+    chartHeader->setSpacing(8);
+    chartHeader->addWidget(makeLabel(QStringLiteral("Horas por semana"), "h2"));
+    chartHeader->addStretch();
+    auto* prevWeek = new QPushButton(QStringLiteral("‹"));
+    prevWeek->setObjectName("monthNav");
+    prevWeek->setCursor(Qt::PointingHandCursor);
+    m_weekLabel = new QLabel;
+    m_weekLabel->setObjectName("monthLabel");
+    m_weekLabel->setAlignment(Qt::AlignCenter);
+    m_weekLabel->setMinimumWidth(190);
+    m_nextWeekButton = new QPushButton(QStringLiteral("›"));
+    m_nextWeekButton->setObjectName("monthNav");
+    m_nextWeekButton->setCursor(Qt::PointingHandCursor);
+    chartHeader->addWidget(prevWeek);
+    chartHeader->addWidget(m_weekLabel);
+    chartHeader->addWidget(m_nextWeekButton);
+    chartLayout->addLayout(chartHeader);
+
+    m_chart = new WeekChart;
+    chartLayout->addWidget(m_chart, 1);
+    root->addWidget(chartCard, 1);
+    root->addSpacing(14);
+
+    connect(prevWeek, &QPushButton::clicked, this,
+            [this] { setWeek(m_weekStart.addDays(-7)); });
+    connect(m_nextWeekButton, &QPushButton::clicked, this,
+            [this] { setWeek(m_weekStart.addDays(7)); });
+
     auto* note = makeCard();
     auto* noteLayout = new QVBoxLayout(note);
     noteLayout->setContentsMargins(20, 18, 20, 18);
     noteLayout->addWidget(makeLabel(QStringLiteral("Em breve"), "h2"));
     noteLayout->addWidget(makeLabel(
-        QStringLiteral("Gráficos por semana, metas de jornada e exportação de dados chegarão nas próximas versões."),
+        QStringLiteral("Metas de jornada configuráveis chegarão nas próximas versões."),
         "muted"));
     root->addWidget(note);
-    root->addStretch();
 
+    const QDate today = QDate::currentDate();
+    m_weekStart = today.addDays(-(today.dayOfWeek() - 1));  // segunda-feira
     refresh();
+}
+
+void ReportsPage::setWeek(const QDate& monday) {
+    m_weekStart = monday;
+    const QDate today = QDate::currentDate();
+    const QDate sunday = monday.addDays(6);
+
+    QList<int> worked;
+    for (int i = 0; i < 7; ++i) {
+        const QDate date = monday.addDays(i);
+        const DayRecord* day = m_storage->find(date);
+        worked.append(day ? day->workedSeconds(date == today ? QTime::currentTime()
+                                                             : QTime())
+                          : 0);
+    }
+    m_chart->setWeek(monday, worked);
+
+    const QLocale locale;
+    m_weekLabel->setText(
+        monday.month() == sunday.month()
+            ? QStringLiteral("%1 – %2")
+                  .arg(monday.day())
+                  .arg(locale.toString(sunday, QStringLiteral("d 'de' MMMM 'de' yyyy")))
+            : QStringLiteral("%1 – %2")
+                  .arg(locale.toString(monday, QStringLiteral("d 'de' MMM")),
+                       locale.toString(sunday, QStringLiteral("d 'de' MMM 'de' yyyy"))));
+
+    // Não faz sentido navegar para semanas futuras.
+    m_nextWeekButton->setEnabled(sunday < today);
 }
 
 void ReportsPage::refresh() {
@@ -149,4 +216,6 @@ void ReportsPage::refresh() {
     m_weekValue->setText(formatDuration(weekSecs));
     m_monthValue->setText(formatDuration(monthSecs));
     m_avgValue->setText(weekDays > 0 ? formatDuration(weekSecs / weekDays) : QStringLiteral("—"));
+
+    setWeek(m_weekStart);  // re-lê os dados da semana exibida no gráfico
 }

@@ -1,5 +1,22 @@
 #include "model.h"
 
+#include <algorithm>
+
+bool Task::isRunning() const {
+    return !intervals.isEmpty() && !intervals.last().end.isValid();
+}
+
+int Task::spentSeconds(const QTime& now) const {
+    int total = 0;
+    for (const TaskInterval& interval : intervals) {
+        if (interval.end.isValid())
+            total += interval.start.secsTo(interval.end);
+        else if (now.isValid())
+            total += interval.start.secsTo(now);
+    }
+    return qMax(total, 0);
+}
+
 DayRecord::Status DayRecord::status() const {
     if (punches.isEmpty())
         return Status::Off;
@@ -64,6 +81,18 @@ QTime DayRecord::lastOut() const {
         if (it->type == PunchType::Out)
             return it->time;
     return {};
+}
+
+int DayRecord::runningTaskIndex() const {
+    for (int i = 0; i < tasks.size(); ++i)
+        if (tasks[i].isRunning())
+            return i;
+    return -1;
+}
+
+void DayRecord::sortPunches() {
+    std::stable_sort(punches.begin(), punches.end(),
+                     [](const Punch& a, const Punch& b) { return a.time < b.time; });
 }
 
 QString punchLabel(PunchType type) {

@@ -25,5 +25,8 @@ QColor iconMuted();
 QColor todayHighlight();
 QColor weekendText();
 QColor faintText();
+QColor successText();
+QColor warnText();
+QColor dangerText();
 
 }  // namespace Theme

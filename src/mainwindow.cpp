@@ -99,6 +99,7 @@ MainWindow::MainWindow() {
     connect(m_themeButton, &QPushButton::clicked, this, [this] {
         Theme::toggle(qApp);       // regenera o QSS e repolimenta tudo
         refreshThemeIcons();       // ícones são pixmaps: precisam ser recriados
+        m_todayPage->refresh();    // idem para os ícones das linhas de lista
     });
     sideLayout->addWidget(m_themeButton);
     sideLayout->addSpacing(6);
@@ -109,6 +110,12 @@ MainWindow::MainWindow() {
     sideLayout->addWidget(footer);
 
     refreshThemeIcons();
+
+    // Se o dia de hoje foi corrigido pela Folha, a página Hoje precisa repintar.
+    connect(m_sheetPage, &TimesheetPage::dayEdited, this, [this](const QDate& date) {
+        if (date == QDate::currentDate())
+            m_todayPage->refresh();
+    });
 
     auto* central = new QWidget;
     auto* layout = new QHBoxLayout(central);

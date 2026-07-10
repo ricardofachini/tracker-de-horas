@@ -75,8 +75,20 @@ void Storage::load() {
         }
         for (const QJsonValue& tv : obj.value(QLatin1String("tasks")).toArray()) {
             const QJsonObject to = tv.toObject();
-            record.tasks.append({to.value(QLatin1String("text")).toString(),
-                                 to.value(QLatin1String("done")).toBool()});
+            Task task{to.value(QLatin1String("text")).toString(),
+                      to.value(QLatin1String("done")).toBool(),
+                      {}};
+            for (const QJsonValue& iv : to.value(QLatin1String("intervals")).toArray()) {
+                const QJsonObject io = iv.toObject();
+                const QTime start = QTime::fromString(io.value(QLatin1String("start")).toString(),
+                                                      QStringLiteral("HH:mm:ss"));
+                // "end" ausente/inválido = intervalo ainda em andamento.
+                const QTime end = QTime::fromString(io.value(QLatin1String("end")).toString(),
+                                                    QStringLiteral("HH:mm:ss"));
+                if (start.isValid())
+                    task.intervals.append({start, end});
+            }
+            record.tasks.append(task);
         }
         m_days.insert(record.date, record);
     }
@@ -92,9 +104,23 @@ void Storage::save() const {
             punches.append(QJsonObject{{QStringLiteral("type"), typeKey(p.type)},
                                        {QStringLiteral("time"), p.time.toString(QStringLiteral("HH:mm:ss"))}});
         QJsonArray tasks;
-        for (const Task& t : record.tasks)
-            tasks.append(QJsonObject{{QStringLiteral("text"), t.text},
-                                     {QStringLiteral("done"), t.done}});
+        for (const Task& t : record.tasks) {
+            QJsonObject to{{QStringLiteral("text"), t.text},
+                           {QStringLiteral("done"), t.done}};
+            if (!t.intervals.isEmpty()) {
+                QJsonArray intervals;
+                for (const TaskInterval& i : t.intervals) {
+                    QJsonObject io{{QStringLiteral("start"),
+                                    i.start.toString(QStringLiteral("HH:mm:ss"))}};
+                    if (i.end.isValid())
+                        io.insert(QStringLiteral("end"),
+                                  i.end.toString(QStringLiteral("HH:mm:ss")));
+                    intervals.append(io);
+                }
+                to.insert(QStringLiteral("intervals"), intervals);
+            }
+            tasks.append(to);
+        }
         days.append(QJsonObject{{QStringLiteral("date"), record.date.toString(Qt::ISODate)},
                                 {QStringLiteral("punches"), punches},
                                 {QStringLiteral("tasks"), tasks}});

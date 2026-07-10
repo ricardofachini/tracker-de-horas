@@ -1,6 +1,8 @@
 #include "timesheetpage.h"
 
+#include "csvexport.h"
 #include "model.h"
+#include "punchedit.h"
 #include "timesheetmodel.h"
 #include "widgets.h"
 
@@ -21,7 +23,9 @@ TimesheetPage::TimesheetPage(Storage* storage, QWidget* parent) : QWidget(parent
     auto* titles = new QVBoxLayout;
     titles->setSpacing(2);
     titles->addWidget(makeLabel(QStringLiteral("Folha de ponto"), "h1"));
-    titles->addWidget(makeLabel(QStringLiteral("Entrada, saída e horas dia a dia"), "muted"));
+    titles->addWidget(makeLabel(
+        QStringLiteral("Entrada, saída e horas dia a dia · clique duplo em um dia para corrigir"),
+        "muted"));
     header->addLayout(titles);
     header->addStretch();
 
@@ -63,6 +67,13 @@ TimesheetPage::TimesheetPage(Storage* storage, QWidget* parent) : QWidget(parent
 
     auto* footer = new QHBoxLayout;
     footer->setContentsMargins(8, 0, 8, 2);
+    auto* exportButton = new QPushButton(QStringLiteral("Exportar CSV"));
+    exportButton->setProperty("kind", "compact");
+    exportButton->setCursor(Qt::PointingHandCursor);
+    exportButton->setToolTip(QStringLiteral("Salvar o mês exibido como planilha CSV"));
+    connect(exportButton, &QPushButton::clicked, this,
+            [this, storage] { exportMonthCsv(this, *storage, m_model->month()); });
+    footer->addWidget(exportButton);
     footer->addStretch();
     footer->addWidget(makeLabel(QStringLiteral("Total do mês:"), "muted"));
     m_totalLabel = makeLabel({}, "h2");
@@ -74,6 +85,22 @@ TimesheetPage::TimesheetPage(Storage* storage, QWidget* parent) : QWidget(parent
             [this] { setMonth(m_model->month().addMonths(-1)); });
     connect(m_nextButton, &QPushButton::clicked, this,
             [this] { setMonth(m_model->month().addMonths(1)); });
+
+    // Clique duplo em um dia: corrigir/remover/adicionar registros de ponto.
+    connect(table, &QTableView::doubleClicked, this,
+            [this, storage](const QModelIndex& index) {
+                if (!index.isValid())
+                    return;
+                const QDate date = m_model->dateForRow(index.row());
+                if (date > QDate::currentDate())  // dia futuro: nada a corrigir
+                    return;
+                DayPunchesDialog dialog(storage, date, this);
+                dialog.exec();
+                if (dialog.changed()) {
+                    refresh();
+                    emit dayEdited(date);
+                }
+            });
 
     setMonth(QDate::currentDate());
 }

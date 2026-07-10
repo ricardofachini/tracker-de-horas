@@ -20,6 +20,7 @@ public:
     void setMonth(const QDate& firstDay);
     QDate month() const { return m_month; }
     int monthTotalSeconds() const;
+    QDate dateForRow(int row) const;
 
     int rowCount(const QModelIndex& parent = {}) const override;
     int columnCount(const QModelIndex& parent = {}) const override;
@@ -27,7 +28,6 @@ public:
     QVariant headerData(int section, Qt::Orientation orientation, int role) const override;
 
 private:
-    QDate dateForRow(int row) const;
     QString cellText(const DayRecord* day, const QDate& date, Column column) const;
 
     Storage* m_storage;

@@ -7,28 +7,31 @@ class Storage;
 class QLabel;
 class QLineEdit;
 class QListWidget;
-class QListWidgetItem;
 class QProgressBar;
 class QPushButton;
-class QTimer;
 
 // Página principal: relógio de ponto ao vivo + tarefas do dia.
 class TodayPage : public QWidget {
 public:
     explicit TodayPage(Storage* storage, QWidget* parent = nullptr);
 
+    // Reconstrói listas, botões e status. Público porque o MainWindow chama
+    // após trocar o tema (ícones pintados) ou editar o dia de hoje pela Folha.
+    void refresh();
+
 private:
     DayRecord& today() const;
     void punch(PunchType type);
     void addTask();
-    void toggleTask(QListWidgetItem* item);
+    void setTaskDone(int index, bool done);
+    void startTask(int index);  // preempção: pausa a tarefa em andamento
+    void pauseTask(int index);
     void clearDoneTasks();
-    void refresh();  // reconstrói listas, botões e status
-    void tick();     // atualiza relógio e contador a cada segundo
+    void scheduleRefresh();  // adiado: seguro para handlers dentro das linhas
+    void tick();             // atualiza relógio e contadores a cada segundo
 
     Storage* m_storage;
     QDate m_shownDate;
-    bool m_updating = false;
 
     QLabel* m_dateLabel;
     QLabel* m_clockLabel;
@@ -47,4 +50,5 @@ private:
     QListWidget* m_taskList;
     QLabel* m_taskEmpty;
     QPushButton* m_btnClearDone;
+    QLabel* m_runningTimeLabel = nullptr;  // tempo da tarefa em andamento
 };

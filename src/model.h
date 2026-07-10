@@ -13,9 +13,22 @@ struct Punch {
     QTime time;
 };
 
+// Uma sessão de dedicação a uma tarefa. `end` inválido = em andamento.
+struct TaskInterval {
+    QTime start;
+    QTime end;
+};
+
 struct Task {
     QString text;
     bool done = false;
+    QList<TaskInterval> intervals;  // sessões de trabalho nesta tarefa
+
+    bool isRunning() const;  // há um intervalo aberto?
+
+    // Segundos dedicados à tarefa. Se ela está em andamento, `now` fecha
+    // o intervalo aberto (passe QTime() para ignorá-lo).
+    int spentSeconds(const QTime& now = QTime()) const;
 };
 
 // Tudo que aconteceu em um dia de trabalho.
@@ -37,6 +50,12 @@ struct DayRecord {
 
     QTime firstIn() const;  // primeira entrada do dia (QTime() se não houver)
     QTime lastOut() const;  // última saída do dia (QTime() se não houver)
+
+    int runningTaskIndex() const;  // tarefa em andamento (-1 se nenhuma)
+
+    // Reordena os registros por horário — necessário após editar um ponto,
+    // pois status() e workedSeconds() dependem da ordem cronológica.
+    void sortPunches();
 };
 
 QString punchLabel(PunchType type);

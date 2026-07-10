@@ -59,6 +59,67 @@ inline QIcon navIcon(NavGlyph glyph) {
     return icon;
 }
 
+// Ícones de ação das linhas de lista: editar, remover, iniciar e pausar.
+
+enum class ActionGlyph { Edit, Remove, Play, Pause };
+
+inline QPixmap paintAction(ActionGlyph glyph, const QColor& color, int size = 16) {
+    const qreal dpr = 2.0;
+    QPixmap pixmap(int(size * dpr), int(size * dpr));
+    pixmap.setDevicePixelRatio(dpr);
+    pixmap.fill(Qt::transparent);
+
+    QPainter painter(&pixmap);
+    painter.setRenderHint(QPainter::Antialiasing);
+    painter.setPen(QPen(color, 1.6, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin));
+
+    switch (glyph) {
+    case ActionGlyph::Edit: {  // lápis inclinado
+        QPainterPath pencil;
+        pencil.moveTo(3.2, 12.8);  // ponta
+        pencil.lineTo(6.4, 11.8);
+        pencil.lineTo(12.1, 6.1);
+        pencil.lineTo(9.9, 3.9);
+        pencil.lineTo(4.2, 9.6);
+        pencil.closeSubpath();
+        painter.drawPath(pencil);
+        break;
+    }
+    case ActionGlyph::Remove:  // lixeira
+        painter.drawLine(QPointF(3.6, 5.0), QPointF(12.4, 5.0));
+        painter.drawLine(QPointF(6.3, 2.9), QPointF(9.7, 2.9));
+        painter.drawRoundedRect(QRectF(5.1, 5.0, 5.8, 8.0), 1.5, 1.5);
+        painter.drawLine(QPointF(7.0, 7.2), QPointF(7.0, 10.8));
+        painter.drawLine(QPointF(9.0, 7.2), QPointF(9.0, 10.8));
+        break;
+    case ActionGlyph::Play: {  // triângulo preenchido
+        QPainterPath triangle;
+        triangle.moveTo(5.6, 3.6);
+        triangle.lineTo(13.2, 8.0);
+        triangle.lineTo(5.6, 12.4);
+        triangle.closeSubpath();
+        painter.setBrush(color);
+        painter.drawPath(triangle);
+        break;
+    }
+    case ActionGlyph::Pause:  // duas barras
+        painter.setBrush(color);
+        painter.setPen(Qt::NoPen);
+        painter.drawRoundedRect(QRectF(4.6, 3.6, 2.7, 8.8), 1.3, 1.3);
+        painter.drawRoundedRect(QRectF(8.7, 3.6, 2.7, 8.8), 1.3, 1.3);
+        break;
+    }
+    return pixmap;
+}
+
+// Estado Normal usa `normal`; hover (modo Active, exige autoRaise) usa `active`.
+inline QIcon actionIcon(ActionGlyph glyph, const QColor& normal, const QColor& active) {
+    QIcon icon;
+    icon.addPixmap(paintAction(glyph, normal), QIcon::Normal);
+    icon.addPixmap(paintAction(glyph, active), QIcon::Active);
+    return icon;
+}
+
 // Ícone do botão de tema: mostra o modo de destino (lua no claro, sol no escuro).
 inline QIcon themeToggleIcon() {
     const QColor color = Theme::iconMuted();

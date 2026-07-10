@@ -15,9 +15,12 @@ qt_add_executable(tracker-horas
     src/card.h src/card.cpp
     src/icons.h
     src/widgets.h
+    src/csvexport.h src/csvexport.cpp
+    src/punchedit.h src/punchedit.cpp
     src/todaypage.h src/todaypage.cpp
     src/timesheetmodel.h src/timesheetmodel.cpp
     src/timesheetpage.h src/timesheetpage.cpp
+    src/weekchart.h src/weekchart.cpp
     src/pages.h src/pages.cpp
     src/mainwindow.h src/mainwindow.cpp
 )
@@ -25,7 +28,7 @@ qt_add_executable(tracker-horas
 qt_add_resources(tracker-horas "assets"
     PREFIX "/"
     BASE assets
-    FILES assets/style.qss assets/check.svg
+    FILES assets/style.qss assets/check.svg assets/arrow-down.svg
 )
 
 target_link_libraries(tracker-horas PRIVATE Qt6::Widgets)

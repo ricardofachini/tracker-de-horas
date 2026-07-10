@@ -1,8 +1,11 @@
 #include "todaypage.h"
 
+#include "punchedit.h"
 #include "storage.h"
+#include "theme.h"
 #include "widgets.h"
 
+#include <QCheckBox>
 #include <QDateTime>
 #include <QHBoxLayout>
 #include <QLineEdit>
@@ -11,6 +14,7 @@
 #include <QProgressBar>
 #include <QPushButton>
 #include <QTimer>
+#include <QToolButton>
 #include <QVBoxLayout>
 
 // Meta de jornada diária usada pela barra de progresso (fixa por enquanto;
@@ -127,7 +131,6 @@ TodayPage::TodayPage(Storage* storage, QWidget* parent)
     m_taskList = new QListWidget;
     m_taskList->setSelectionMode(QAbstractItemView::NoSelection);
     m_taskList->setFocusPolicy(Qt::NoFocus);
-    connect(m_taskList, &QListWidget::itemChanged, this, [this](QListWidgetItem* item) { toggleTask(item); });
     taskLayout->addWidget(m_taskList, 1);
 
     auto* taskFooter = new QHBoxLayout;
@@ -155,7 +158,15 @@ DayRecord& TodayPage::today() const {
 }
 
 void TodayPage::punch(PunchType type) {
-    today().punches.append({type, QTime::currentTime()});
+    DayRecord& day = today();
+    const QTime now = QTime::currentTime();
+    day.punches.append({type, now});
+    // Pausar ou encerrar o expediente também pausa a tarefa em andamento.
+    if (type == PunchType::BreakStart || type == PunchType::Out) {
+        const int running = day.runningTaskIndex();
+        if (running >= 0)
+            day.tasks[running].intervals.last().end = now;
+    }
     m_storage->save();
     refresh();
     tick();
@@ -165,28 +176,50 @@ void TodayPage::addTask() {
     const QString text = m_taskInput->text().trimmed();
     if (text.isEmpty())
         return;
-    today().tasks.append({text, false});
+    today().tasks.append({text, false, {}});
     m_storage->save();
     m_taskInput->clear();
     m_taskInput->setFocus();
     refresh();
 }
 
-void TodayPage::toggleTask(QListWidgetItem* item) {
-    if (m_updating)
-        return;
+void TodayPage::setTaskDone(int index, bool done) {
     DayRecord& day = today();
-    const int index = item->data(Qt::UserRole).toInt();
     if (index < 0 || index >= day.tasks.size())
         return;
-    day.tasks[index].done = item->checkState() == Qt::Checked;
+    Task& task = day.tasks[index];
+    task.done = done;
+    if (done && task.isRunning())  // concluir também para o cronômetro
+        task.intervals.last().end = QTime::currentTime();
     m_storage->save();
+    scheduleRefresh();
+}
 
-    m_updating = true;
-    QFont font = item->font();
-    font.setStrikeOut(day.tasks[index].done);
-    item->setFont(font);
-    m_updating = false;
+void TodayPage::startTask(int index) {
+    DayRecord& day = today();
+    if (index < 0 || index >= day.tasks.size())
+        return;
+    const QTime now = QTime::currentTime();
+    const int running = day.runningTaskIndex();
+    if (running == index)
+        return;
+    if (running >= 0)  // preempção: só uma tarefa corre por vez
+        day.tasks[running].intervals.last().end = now;
+    day.tasks[index].intervals.append({now, QTime()});
+    m_storage->save();
+    scheduleRefresh();
+}
+
+void TodayPage::pauseTask(int index) {
+    DayRecord& day = today();
+    if (index < 0 || index >= day.tasks.size())
+        return;
+    Task& task = day.tasks[index];
+    if (!task.isRunning())
+        return;
+    task.intervals.last().end = QTime::currentTime();
+    m_storage->save();
+    scheduleRefresh();
 }
 
 void TodayPage::clearDoneTasks() {
@@ -196,8 +229,16 @@ void TodayPage::clearDoneTasks() {
     refresh();
 }
 
+void TodayPage::scheduleRefresh() {
+    // Adiado para o próximo ciclo do event loop: handlers de botões dentro
+    // das linhas não podem destruir a própria linha enquanto executam.
+    QTimer::singleShot(0, this, [this] {
+        refresh();
+        tick();
+    });
+}
+
 void TodayPage::refresh() {
-    m_updating = true;
     const DayRecord& day = today();
     m_shownDate = day.date;
 
@@ -235,30 +276,107 @@ void TodayPage::refresh() {
     setUiState(m_statusPill, "state", stateName);
     setUiState(m_workedLabel, "state", stateName);
 
+    // Registros do dia: cada linha com botões de editar e remover.
     m_punchList->clear();
-    for (const Punch& p : day.punches)
-        m_punchList->addItem(QStringLiteral("%1  ·  %2").arg(p.time.toString(QStringLiteral("HH:mm")),
-                                                             punchLabel(p.type)));
+    for (int i = 0; i < day.punches.size(); ++i) {
+        QWidget* row = makePunchRow(
+            day.punches[i],
+            [this, i] {
+                DayRecord& record = today();
+                if (i >= record.punches.size())
+                    return;
+                Punch punch = record.punches[i];
+                if (!editPunchDialog(this, punch))
+                    return;
+                record.punches[i] = punch;
+                record.sortPunches();
+                m_storage->save();
+                scheduleRefresh();
+            },
+            [this, i] {
+                DayRecord& record = today();
+                if (i >= record.punches.size())
+                    return;
+                const Punch& punch = record.punches[i];
+                if (!confirmRemoveDialog(
+                        this, QStringLiteral("Remover registro?"),
+                        QStringLiteral("O registro \"%1 · %2\" será removido definitivamente.")
+                            .arg(punch.time.toString(QStringLiteral("HH:mm")),
+                                 punchLabel(punch.type))))
+                    return;
+                record.punches.removeAt(i);
+                m_storage->save();
+                scheduleRefresh();
+            });
+        auto* item = new QListWidgetItem(m_punchList);
+        item->setSizeHint(row->sizeHint());
+        m_punchList->setItemWidget(item, row);
+    }
     m_punchEmpty->setVisible(day.punches.isEmpty());
     m_punchList->setVisible(!day.punches.isEmpty());
 
+    // Tarefas: checkbox + tempo dedicado + play/pause (preemptivo).
     m_taskList->clear();
+    m_runningTimeLabel = nullptr;
+    const QTime nowTime = QTime::currentTime();
     for (int i = 0; i < day.tasks.size(); ++i) {
         const Task& task = day.tasks[i];
-        auto* item = new QListWidgetItem(task.text);
-        item->setFlags(Qt::ItemIsEnabled | Qt::ItemIsUserCheckable);
-        item->setCheckState(task.done ? Qt::Checked : Qt::Unchecked);
-        item->setData(Qt::UserRole, i);
-        QFont font = item->font();
+        auto* row = new QWidget;
+        auto* rowLayout = new QHBoxLayout(row);
+        rowLayout->setContentsMargins(6, 7, 2, 7);
+        rowLayout->setSpacing(8);
+
+        auto* check = new QCheckBox(task.text);
+        check->setCursor(Qt::PointingHandCursor);
+        check->setChecked(task.done);
+        check->setProperty("done", task.done ? "true" : "false");
+        QFont font = check->font();
         font.setStrikeOut(task.done);
-        item->setFont(font);
-        m_taskList->addItem(item);
+        check->setFont(font);
+        connect(check, &QCheckBox::toggled, this,
+                [this, i](bool checked) { setTaskDone(i, checked); });
+        rowLayout->addWidget(check, 1);
+
+        const bool running = task.isRunning();
+        auto* timeLabel = makeLabel({}, "taskTime");
+        timeLabel->setProperty("running", running ? "true" : "false");
+        const int spent = task.spentSeconds(running ? nowTime : QTime());
+        if (running) {
+            timeLabel->setText(formatDuration(spent, true));
+            m_runningTimeLabel = timeLabel;
+        } else if (spent > 0) {
+            timeLabel->setText(formatDuration(spent));
+        }
+        rowLayout->addWidget(timeLabel);
+
+        QToolButton* action;
+        if (running) {
+            action = makeRowActionButton(ActionGlyph::Pause, Theme::warnText(),
+                                         Theme::warnText(), QStringLiteral("Pausar tarefa"));
+            connect(action, &QToolButton::clicked, this, [this, i] { pauseTask(i); });
+        } else {
+            action = makeRowActionButton(ActionGlyph::Play, Theme::successText(),
+                                         Theme::successText(),
+                                         spent > 0 ? QStringLiteral("Retomar tarefa")
+                                                   : QStringLiteral("Iniciar tarefa"));
+            connect(action, &QToolButton::clicked, this, [this, i] { startTask(i); });
+        }
+        if (task.done) {  // some, mas mantém o espaço para alinhar as linhas
+            QSizePolicy policy = action->sizePolicy();
+            policy.setRetainSizeWhenHidden(true);
+            action->setSizePolicy(policy);
+            action->hide();
+        }
+        rowLayout->addWidget(action);
+
+        auto* item = new QListWidgetItem(m_taskList);
+        item->setSizeHint(row->sizeHint());
+        m_taskList->setItemWidget(item, row);
     }
     m_taskEmpty->setVisible(day.tasks.isEmpty());
     m_taskList->setVisible(!day.tasks.isEmpty());
     m_btnClearDone->setVisible(std::any_of(day.tasks.cbegin(), day.tasks.cend(),
                                            [](const Task& t) { return t.done; }));
-    m_updating = false;
 }
 
 void TodayPage::tick() {
@@ -271,6 +389,15 @@ void TodayPage::tick() {
 
     const int worked = today().workedSeconds(now.time());
     m_workedLabel->setText(formatDuration(worked, true));
+
+    // Cronômetro ao vivo da tarefa em andamento.
+    if (m_runningTimeLabel) {
+        const DayRecord& day = today();
+        const int running = day.runningTaskIndex();
+        if (running >= 0)
+            m_runningTimeLabel->setText(
+                formatDuration(day.tasks[running].spentSeconds(now.time()), true));
+    }
 
     m_journeyBar->setValue(qMin(worked, kJourneySeconds));
     const bool complete = worked >= kJourneySeconds;

@@ -118,6 +118,9 @@ QColor accentStrong() { return QColor::fromString(QLatin1String(tokenValue("@acc
 QColor iconMuted() { return QColor::fromString(QLatin1String(tokenValue("@textMuted"))); }
 QColor weekendText() { return QColor::fromString(QLatin1String(tokenValue("@timerOff"))); }
 QColor faintText() { return QColor::fromString(QLatin1String(tokenValue("@faint"))); }
+QColor successText() { return QColor::fromString(QLatin1String(tokenValue("@successText"))); }
+QColor warnText() { return QColor::fromString(QLatin1String(tokenValue("@warnText"))); }
+QColor dangerText() { return QColor::fromString(QLatin1String(tokenValue("@dangerText"))); }
 
 QColor todayHighlight() {
     return isDark() ? QColor(0x2c, 0x36, 0x46) : QColor(0xef, 0xf5, 0xfd);
