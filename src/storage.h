@@ -17,6 +17,12 @@ public:
     // Todos os dias registrados, do mais recente ao mais antigo.
     QList<DayRecord> allDays() const;
 
+    // Turno que cruza a meia-noite: fecha o expediente aberto de `date` com
+    // Saída 23:59:59 e reabre o dia seguinte às 00:00:00 no mesmo estado
+    // (trabalhando ou em pausa). A tarefa em andamento é pausada, como em
+    // qualquer saída. Retorna false se o dia não tinha expediente aberto.
+    bool bridgeMidnight(const QDate& date);
+
     void save() const;
 
 private:

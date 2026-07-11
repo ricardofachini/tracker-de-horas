@@ -242,6 +242,23 @@ QCheckBox::indicator:checked {
     image: url(:/check.svg);
 }
 
+/* Radio buttons (diálogo de turno aberto), no desenho do checkbox. */
+QRadioButton { background: transparent; spacing: 10px; color: @textBody; }
+QRadioButton::indicator {
+    width: 14px;
+    height: 14px;
+    border-radius: 9px;
+    border: 2px solid @faint;
+    background: @surface;
+}
+QRadioButton::indicator:hover { border-color: @accent; }
+QRadioButton::indicator:checked {
+    width: 8px;
+    height: 8px;
+    border: 5px solid @accent;
+    background: #ffffff;
+}
+
 /* --------------------------------------------------------------- Listas */
 
 QListWidget {

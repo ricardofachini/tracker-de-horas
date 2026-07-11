@@ -2,6 +2,7 @@
 
 #include "icons.h"
 #include "pages.h"
+#include "punchedit.h"
 #include "theme.h"
 #include "timesheetpage.h"
 #include "todaypage.h"
@@ -13,6 +14,7 @@
 #include <QPropertyAnimation>
 #include <QPushButton>
 #include <QStackedWidget>
+#include <QTimer>
 #include <QVBoxLayout>
 
 // Entrada da página nova: um deslize curto para cima, animando "pos".
@@ -124,6 +126,20 @@ MainWindow::MainWindow() {
     layout->addWidget(sidebar);
     layout->addWidget(m_stack, 1);
     setCentralWidget(central);
+
+    // Turno que atravessou a meia-noite com o app fechado: se ontem ficou
+    // com expediente aberto, perguntar como resolver assim que a janela abrir.
+    QTimer::singleShot(0, this, [this] {
+        const QDate yesterday = QDate::currentDate().addDays(-1);
+        const DayRecord* day = m_storage.find(yesterday);
+        if (!day)
+            return;
+        const DayRecord::Status status = day->status();
+        if (status != DayRecord::Status::Working && status != DayRecord::Status::OnBreak)
+            return;
+        if (resolveOpenShiftDialog(&m_storage, yesterday, this))
+            m_todayPage->refresh();
+    });
 }
 
 void MainWindow::refreshThemeIcons() {

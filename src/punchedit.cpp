@@ -10,6 +10,7 @@
 #include <QListWidget>
 #include <QLocale>
 #include <QPushButton>
+#include <QRadioButton>
 #include <QTimeEdit>
 #include <QTimer>
 #include <QToolButton>
@@ -111,6 +112,92 @@ bool confirmRemoveDialog(QWidget* parent, const QString& question, const QString
     QObject::connect(cancel, &QPushButton::clicked, &dialog, &QDialog::reject);
     QObject::connect(remove, &QPushButton::clicked, &dialog, &QDialog::accept);
     return dialog.exec() == QDialog::Accepted;
+}
+
+bool resolveOpenShiftDialog(Storage* storage, const QDate& openDay, QWidget* parent) {
+    const DayRecord* record = storage->find(openDay);
+    if (!record)
+        return false;
+    const DayRecord::Status status = record->status();
+    if (status != DayRecord::Status::Working && status != DayRecord::Status::OnBreak)
+        return false;
+
+    QDialog dialog(parent);
+    dialog.setWindowTitle(QStringLiteral("Expediente em aberto"));
+    dialog.setModal(true);
+    dialog.setMinimumWidth(420);
+
+    auto* layout = new QVBoxLayout(&dialog);
+    layout->setContentsMargins(24, 22, 24, 22);
+    layout->setSpacing(8);
+    layout->addWidget(makeLabel(QStringLiteral("O expediente de ontem ficou aberto"), "h2"));
+    auto* detail = makeLabel(
+        QStringLiteral("Em %1 a última marcação foi \"%2\" às %3, sem encerrar o expediente.")
+            .arg(QLocale().toString(openDay, QStringLiteral("dddd, d 'de' MMMM")),
+                 punchLabel(record->punches.last().type),
+                 record->punches.last().time.toString(QStringLiteral("HH:mm"))),
+        "muted");
+    detail->setWordWrap(true);
+    layout->addWidget(detail);
+    layout->addSpacing(10);
+
+    auto* stillWorking = new QRadioButton(
+        QStringLiteral("Ainda estou trabalhando (o turno atravessou a meia-noite)"));
+    auto* workedUntil = new QRadioButton(QStringLiteral("Trabalhei até as"));
+    auto* fixManually = new QRadioButton(
+        QStringLiteral("Encerrei ontem e esqueci de registrar — corrigir os registros"));
+    stillWorking->setChecked(true);
+    for (QRadioButton* option : {stillWorking, workedUntil, fixManually})
+        option->setCursor(Qt::PointingHandCursor);
+
+    auto* untilEdit = new QTimeEdit(QTime::currentTime());
+    untilEdit->setDisplayFormat(QStringLiteral("HH:mm"));
+    untilEdit->setButtonSymbols(QAbstractSpinBox::NoButtons);
+    untilEdit->setEnabled(false);
+    QObject::connect(workedUntil, &QRadioButton::toggled, untilEdit,
+                     &QWidget::setEnabled);
+
+    layout->addWidget(stillWorking);
+    auto* untilRow = new QHBoxLayout;
+    untilRow->setSpacing(8);
+    untilRow->addWidget(workedUntil);
+    untilRow->addWidget(untilEdit);
+    untilRow->addWidget(new QLabel(QStringLiteral("de hoje")));
+    untilRow->addStretch();
+    layout->addLayout(untilRow);
+    layout->addWidget(fixManually);
+    layout->addSpacing(12);
+
+    auto* buttons = new QHBoxLayout;
+    buttons->setSpacing(10);
+    buttons->addStretch();
+    auto* later = makeDialogButton(QStringLiteral("Deixar para depois"), "neutral");
+    auto* apply = makeDialogButton(QStringLiteral("Aplicar"), "primary");
+    apply->setDefault(true);
+    buttons->addWidget(later);
+    buttons->addWidget(apply);
+    layout->addLayout(buttons);
+
+    QObject::connect(later, &QPushButton::clicked, &dialog, &QDialog::reject);
+    QObject::connect(apply, &QPushButton::clicked, &dialog, &QDialog::accept);
+
+    if (dialog.exec() != QDialog::Accepted)
+        return false;
+
+    if (fixManually->isChecked()) {
+        DayPunchesDialog punches(storage, openDay, parent);
+        punches.exec();
+        return punches.changed();
+    }
+
+    storage->bridgeMidnight(openDay);
+    if (workedUntil->isChecked()) {
+        DayRecord& today = storage->day(openDay.addDays(1));
+        today.punches.append({PunchType::Out, untilEdit->time()});
+        today.sortPunches();
+    }
+    storage->save();
+    return true;
 }
 
 QToolButton* makeRowActionButton(ActionGlyph glyph, const QColor& normal,

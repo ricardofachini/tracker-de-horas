@@ -51,6 +51,32 @@ QList<DayRecord> Storage::allDays() const {
     return days;
 }
 
+bool Storage::bridgeMidnight(const QDate& date) {
+    const DayRecord* existing = find(date);
+    if (!existing)
+        return false;
+    const DayRecord::Status status = existing->status();
+    if (status != DayRecord::Status::Working && status != DayRecord::Status::OnBreak)
+        return false;
+
+    const QTime endOfDay(23, 59, 59);
+    DayRecord& previous = day(date);
+    const int running = previous.runningTaskIndex();
+    if (running >= 0)
+        previous.tasks[running].intervals.last().end = endOfDay;
+    previous.punches.append({PunchType::Out, endOfDay});
+
+    // Reabre o dia seguinte antes de qualquer registro que ele já tenha
+    // (ex.: a saída da madrugada lançada depois).
+    DayRecord& next = day(date.addDays(1));
+    QList<Punch> reopened{{PunchType::In, QTime(0, 0)}};
+    if (status == DayRecord::Status::OnBreak)
+        reopened.append({PunchType::BreakStart, QTime(0, 0)});
+    next.punches = reopened + next.punches;
+    next.sortPunches();
+    return true;
+}
+
 void Storage::load() {
     QFile file(m_path);
     if (!file.open(QIODevice::ReadOnly))

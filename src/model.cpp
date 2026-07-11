@@ -119,3 +119,14 @@ QString formatDuration(int seconds, bool withSeconds) {
         return QStringLiteral("%1min").arg(m);
     return QStringLiteral("%1h %2min").arg(h).arg(m, 2, 10, QChar('0'));
 }
+
+QString formatDurationCompact(int seconds) {
+    seconds = qMax(seconds, 0);
+    const int h = seconds / 3600;
+    const int m = (seconds % 3600) / 60;
+    if (h == 0)
+        return QStringLiteral("%1min").arg(m);
+    if (m == 0)
+        return QStringLiteral("%1h").arg(h);
+    return QStringLiteral("%1h%2").arg(h).arg(m, 2, 10, QChar('0'));
+}

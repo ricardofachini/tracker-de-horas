@@ -1,5 +1,6 @@
 #include "pages.h"
 
+#include "appsettings.h"
 #include "storage.h"
 #include "weekchart.h"
 #include "widgets.h"
@@ -8,6 +9,7 @@
 #include <QLocale>
 #include <QPushButton>
 #include <QScrollArea>
+#include <QTimeEdit>
 #include <QVBoxLayout>
 
 // ---------------------------------------------------------------- Histórico
@@ -150,14 +152,31 @@ ReportsPage::ReportsPage(Storage* storage, QWidget* parent)
     connect(m_nextWeekButton, &QPushButton::clicked, this,
             [this] { setWeek(m_weekStart.addDays(7)); });
 
-    auto* note = makeCard();
-    auto* noteLayout = new QVBoxLayout(note);
-    noteLayout->setContentsMargins(20, 18, 20, 18);
-    noteLayout->addWidget(makeLabel(QStringLiteral("Em breve"), "h2"));
-    noteLayout->addWidget(makeLabel(
-        QStringLiteral("Metas de jornada configuráveis chegarão nas próximas versões."),
+    // Meta de jornada configurável: alimenta a barra da página Hoje
+    // (relida a cada segundo) e a linha de meta do gráfico acima.
+    auto* goalCard = makeCard();
+    auto* goalLayout = new QHBoxLayout(goalCard);
+    goalLayout->setContentsMargins(20, 18, 20, 18);
+    goalLayout->setSpacing(14);
+    auto* goalTexts = new QVBoxLayout;
+    goalTexts->setSpacing(2);
+    goalTexts->addWidget(makeLabel(QStringLiteral("Meta de jornada diária"), "h2"));
+    goalTexts->addWidget(makeLabel(
+        QStringLiteral("Usada na barra de progresso da página Hoje e na linha de meta do gráfico."),
         "muted"));
-    root->addWidget(note);
+    goalLayout->addLayout(goalTexts);
+    goalLayout->addStretch();
+    auto* goalEdit = new QTimeEdit(QTime(0, 0).addSecs(AppSettings::journeySeconds()));
+    goalEdit->setDisplayFormat(QStringLiteral("HH:mm"));
+    goalEdit->setButtonSymbols(QAbstractSpinBox::NoButtons);
+    goalEdit->setMinimumTime(QTime(0, 0).addSecs(AppSettings::kMinJourneySeconds));
+    goalEdit->setToolTip(QStringLiteral("Digite a meta ou ajuste com as setas do teclado"));
+    connect(goalEdit, &QTimeEdit::timeChanged, this, [this](const QTime& time) {
+        AppSettings::setJourneySeconds(QTime(0, 0).secsTo(time));
+        m_chart->update();  // reposiciona a linha de meta na hora
+    });
+    goalLayout->addWidget(goalEdit);
+    root->addWidget(goalCard);
 
     const QDate today = QDate::currentDate();
     m_weekStart = today.addDays(-(today.dayOfWeek() - 1));  // segunda-feira

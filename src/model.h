@@ -62,3 +62,6 @@ QString punchLabel(PunchType type);
 
 // "6h 42min" ou, com withSeconds, "06:42:15".
 QString formatDuration(int seconds, bool withSeconds = false);
+
+// "8h", "7h30" ou "45min" — para rótulos curtos (meta, valores do gráfico).
+QString formatDurationCompact(int seconds);

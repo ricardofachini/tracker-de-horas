@@ -1,5 +1,6 @@
 #include "weekchart.h"
 
+#include "appsettings.h"
 #include "model.h"
 #include "theme.h"
 
@@ -15,19 +16,6 @@ static constexpr qreal kLeft = 48;
 static constexpr qreal kRight = 12;
 static constexpr qreal kTop = 26;
 static constexpr qreal kBottom = 30;
-
-static constexpr int kGoalSeconds = 8 * 3600;  // mesma meta da página Hoje
-
-// "8h05" / "45min" — compacto para caber sobre a barra.
-static QString shortDuration(int seconds) {
-    const int h = seconds / 3600;
-    const int m = (seconds % 3600) / 60;
-    if (h == 0)
-        return QStringLiteral("%1min").arg(m);
-    if (m == 0)
-        return QStringLiteral("%1h").arg(h);
-    return QStringLiteral("%1h%2").arg(h).arg(m, 2, 10, QChar('0'));
-}
 
 WeekChart::WeekChart(QWidget* parent) : QWidget(parent) {
     setMouseTracking(true);  // hover por coluna, com tooltip
@@ -49,7 +37,9 @@ QRectF WeekChart::plotRect() const {
 }
 
 int WeekChart::topSeconds() const {
-    int maxSeconds = kGoalSeconds;
+    // A meta é lida na hora de pintar (como as cores do Theme): mudou em
+    // Relatórios, o próximo repaint já mostra certo.
+    int maxSeconds = AppSettings::journeySeconds();
     for (int s : m_seconds)
         maxSeconds = qMax(maxSeconds, s);
     // Duas horas acima da hora cheia do maior valor (ou da meta), para o
@@ -106,8 +96,9 @@ void WeekChart::paintEvent(QPaintEvent*) {
             6, 6);
     }
 
-    // Linha de meta (8h), tracejada, com rótulo discreto.
-    const qreal goalY = plot.bottom() - plot.height() * kGoalSeconds / top;
+    // Linha de meta, tracejada, com rótulo discreto.
+    const int goalSeconds = AppSettings::journeySeconds();
+    const qreal goalY = plot.bottom() - plot.height() * goalSeconds / top;
     QPen goalPen(Theme::accentStrong(), 1, Qt::DashLine);
     goalPen.setDashPattern({4, 4});
     painter.setPen(goalPen);
@@ -115,7 +106,8 @@ void WeekChart::paintEvent(QPaintEvent*) {
     painter.setFont(small);
     painter.setPen(Theme::iconMuted());
     painter.drawText(QRectF(plot.left(), goalY - 16, plot.width(), 14),
-                     Qt::AlignRight | Qt::AlignBottom, QStringLiteral("meta 8h"));
+                     Qt::AlignRight | Qt::AlignBottom,
+                     QStringLiteral("meta %1").arg(formatDurationCompact(goalSeconds)));
 
     // Barras: um único matiz (accent); a magnitude está no comprimento.
     const qreal barWidth = qBound<qreal>(18, slot * 0.52, 44);
@@ -157,7 +149,7 @@ void WeekChart::paintEvent(QPaintEvent*) {
         painter.setFont(small);
         painter.setPen(Theme::iconMuted());
         painter.drawText(QRectF(plot.left() + i * slot, bar.top() - 18, slot, 16),
-                         Qt::AlignHCenter | Qt::AlignBottom, shortDuration(secs));
+                         Qt::AlignHCenter | Qt::AlignBottom, formatDurationCompact(secs));
     }
 
     if (!anyData) {

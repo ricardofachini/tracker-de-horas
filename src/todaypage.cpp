@@ -1,5 +1,6 @@
 #include "todaypage.h"
 
+#include "appsettings.h"
 #include "punchedit.h"
 #include "storage.h"
 #include "theme.h"
@@ -16,10 +17,6 @@
 #include <QTimer>
 #include <QToolButton>
 #include <QVBoxLayout>
-
-// Meta de jornada diária usada pela barra de progresso (fixa por enquanto;
-// virará configuração do usuário no futuro).
-static constexpr int kJourneySeconds = 8 * 3600;
 
 TodayPage::TodayPage(Storage* storage, QWidget* parent)
     : QWidget(parent), m_storage(storage) {
@@ -80,7 +77,7 @@ TodayPage::TodayPage(Storage* storage, QWidget* parent)
     heroLayout->addSpacing(14);
     m_journeyBar = new QProgressBar;
     m_journeyBar->setObjectName("journeyBar");
-    m_journeyBar->setRange(0, kJourneySeconds);
+    m_journeyBar->setRange(0, AppSettings::journeySeconds());
     m_journeyBar->setValue(0);
     m_journeyBar->setTextVisible(false);
     m_journeyBar->setFixedHeight(6);
@@ -379,12 +376,38 @@ void TodayPage::refresh() {
                                            [](const Task& t) { return t.done; }));
 }
 
+void TodayPage::handleDayChange(const QDateTime& now) {
+    const QDate previous = m_shownDate;
+    const DayRecord* record = m_storage->find(previous);
+    const DayRecord::Status status = record ? record->status() : DayRecord::Status::Off;
+    const bool shiftOpen = status == DayRecord::Status::Working
+                           || status == DayRecord::Status::OnBreak;
+    // Meia-noite observada (app rodando) vs. salto de relógio (suspend/retomada):
+    // no salto não dá para saber se o usuário seguiu trabalhando — perguntamos.
+    const bool observedMidnight = m_lastTick.isValid() && m_lastTick.secsTo(now) < 120
+                                  && previous.addDays(1) == now.date();
+
+    refresh();  // antes de qualquer diálogo: evita reentrada pelo timer
+    if (!shiftOpen)
+        return;
+    if (observedMidnight) {
+        m_storage->bridgeMidnight(previous);
+        m_storage->save();
+        refresh();
+    } else if (previous == now.date().addDays(-1)) {
+        if (resolveOpenShiftDialog(m_storage, previous, this))
+            refresh();
+    }
+}
+
 void TodayPage::tick() {
     const QDateTime now = QDateTime::currentDateTime();
     if (m_shownDate != now.date()) {  // virada de dia com o app aberto
-        refresh();
+        handleDayChange(now);
+        m_lastTick = now;
         return;
     }
+    m_lastTick = now;
     m_clockLabel->setText(now.toString(QStringLiteral("HH:mm:ss")));
 
     const int worked = today().workedSeconds(now.time());
@@ -399,12 +422,16 @@ void TodayPage::tick() {
                 formatDuration(day.tasks[running].spentSeconds(now.time()), true));
     }
 
-    m_journeyBar->setValue(qMin(worked, kJourneySeconds));
-    const bool complete = worked >= kJourneySeconds;
+    const int journeySeconds = AppSettings::journeySeconds();
+    if (m_journeyBar->maximum() != journeySeconds)  // meta alterada em Relatórios
+        m_journeyBar->setRange(0, journeySeconds);
+    m_journeyBar->setValue(qMin(worked, journeySeconds));
+    const bool complete = worked >= journeySeconds;
+    const QString goal = formatDurationCompact(journeySeconds);
     m_journeyCaption->setText(
-        complete ? QStringLiteral("meta de 8h atingida ✓")
-                 : QStringLiteral("faltam %1 para a meta de 8h")
-                       .arg(formatDuration(kJourneySeconds - worked)));
+        complete ? QStringLiteral("meta de %1 atingida ✓").arg(goal)
+                 : QStringLiteral("faltam %1 para a meta de %2")
+                       .arg(formatDuration(journeySeconds - worked), goal));
     if (complete != m_journeyComplete) {  // repolir o QSS só quando muda
         m_journeyComplete = complete;
         setUiState(m_journeyBar, "complete", complete ? QStringLiteral("true")

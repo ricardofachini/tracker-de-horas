@@ -1,6 +1,7 @@
 #pragma once
 
 #include "model.h"
+#include <QDateTime>
 #include <QWidget>
 
 class Storage;
@@ -29,9 +30,11 @@ private:
     void clearDoneTasks();
     void scheduleRefresh();  // adiado: seguro para handlers dentro das linhas
     void tick();             // atualiza relógio e contadores a cada segundo
+    void handleDayChange(const QDateTime& now);  // virada de dia (meia-noite)
 
     Storage* m_storage;
     QDate m_shownDate;
+    QDateTime m_lastTick;  // distingue meia-noite observada de retomada (suspend)
 
     QLabel* m_dateLabel;
     QLabel* m_clockLabel;
