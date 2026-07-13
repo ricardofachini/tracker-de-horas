@@ -1,0 +1,12 @@
+[Desktop Entry]
+Type=Application
+Name=Tracker Horas
+Comment=Controle de ponto e tarefas diárias
+Comment[en]=Time clock and daily task tracker
+Exec=tracker-horas
+Icon=tracker-horas
+Terminal=false
+Categories=Office;ProjectManagement;Qt;
+Keywords=ponto;horas;tarefas;timesheet;
+Keywords[en]=time;clock;hours;tasks;timesheet;
+StartupNotify=true

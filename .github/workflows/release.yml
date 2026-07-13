@@ -1,0 +1,48 @@
+# Publica uma release no GitHub (com o pacote .deb anexado) sempre que
+# uma tag v* é enviada: git tag v0.2.0 && git push origin v0.2.0
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Conferir se a tag bate com a versão do CMakeLists
+        run: |
+          ver=$(grep -Po 'project\(tracker-horas VERSION \K[0-9.]+' CMakeLists.txt)
+          if [ "v$ver" != "$GITHUB_REF_NAME" ]; then
+            echo "Tag $GITHUB_REF_NAME não bate com a versão $ver do CMakeLists.txt" >&2
+            exit 1
+          fi
+
+      - name: Instalar dependências
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends cmake qt6-base-dev
+
+      - name: Compilar
+        run: |
+          cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+          cmake --build build -j"$(nproc)"
+
+      - name: Testes
+        run: ctest --test-dir build --output-on-failure
+
+      - name: Gerar .deb
+        run: cd build && cpack -G DEB
+
+      - name: Publicar release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" build/tracker-horas_*.deb \
+            --title "Tracker Horas $GITHUB_REF_NAME" \
+            --generate-notes

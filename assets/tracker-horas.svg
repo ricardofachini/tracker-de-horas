@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#62a0ea"/>
+      <stop offset="1" stop-color="#3584e4"/>
+    </linearGradient>
+    <linearGradient id="badge" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#57e389"/>
+      <stop offset="1" stop-color="#2ec27e"/>
+    </linearGradient>
+  </defs>
+
+  <!-- fundo -->
+  <rect x="8" y="8" width="112" height="112" rx="26" fill="url(#bg)"/>
+  <rect x="9" y="9" width="110" height="110" rx="25" fill="none" stroke="#000" stroke-opacity=".15" stroke-width="2"/>
+
+  <!-- mostrador; a fatia clara é a jornada já trabalhada (12h → 4h),
+       com o ponteiro das horas na borda dela, como a barra de progresso -->
+  <circle cx="64" cy="60" r="38" fill="#fff" fill-opacity=".1"/>
+  <path d="M64 60 L64 22 A38 38 0 0 1 96.9 79 Z" fill="#fff" fill-opacity=".42"/>
+  <circle cx="64" cy="60" r="38" fill="none" stroke="#fff" stroke-width="6"/>
+
+  <!-- marcações 12/3/6/9 -->
+  <g stroke="#fff" stroke-opacity=".65" stroke-width="3.5" stroke-linecap="round">
+    <path d="M64 26v5"/>
+    <path d="M98 60h-5"/>
+    <path d="M64 94v-5"/>
+    <path d="M30 60h5"/>
+  </g>
+
+  <!-- ponteiros -->
+  <g stroke="#fff" stroke-width="6" stroke-linecap="round">
+    <path d="M64 60V36"/>
+    <path d="M64 60l15.6 9"/>
+  </g>
+  <circle cx="64" cy="60" r="5" fill="#fff"/>
+
+  <!-- selo de tarefa concluída -->
+  <circle cx="94" cy="94" r="21" fill="url(#badge)" stroke="#fff" stroke-width="3.5"/>
+  <path d="M85 94.5l6.5 6.5 13-13" fill="none" stroke="#fff" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

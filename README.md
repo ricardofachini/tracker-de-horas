@@ -50,6 +50,31 @@ cmake --build build -j$(nproc)
 O app roda nativamente em Wayland (`QT_QPA_PLATFORM=wayland;xcb` por padrão,
 com fallback para X11).
 
+## Instalar e empacotar (.deb)
+
+O `cmake --install` instala o binário, o atalho de menu (`.desktop`) e o
+ícone; o CPack gera o pacote Debian/Ubuntu com as dependências do Qt
+declaradas automaticamente (`dpkg-shlibdeps`):
+
+```bash
+sudo cmake --install build           # instala direto em /usr/local
+# ou
+(cd build && cpack -G DEB)           # gera tracker-horas_<versão>_amd64.deb
+sudo apt install ./build/tracker-horas_*.deb
+```
+
+## Release no GitHub
+
+O workflow [release.yml](.github/workflows/release.yml) compila em
+`ubuntu-24.04`, roda os testes, gera o `.deb` e publica tudo em uma release
+sempre que uma tag `v*` é enviada:
+
+```bash
+# 1. atualize VERSION no project() do CMakeLists.txt (a tag deve bater)
+git tag v0.1.0
+git push origin v0.1.0
+```
+
 ## Testes
 
 Testes unitários (Qt Test) cobrem o modelo de domínio, a persistência, a
@@ -82,6 +107,11 @@ src/
   mainwindow.*    janela com sidebar de navegação
 assets/
   style.qss       folha de estilo com tokens (@cor), estilo Adwaita
+  tracker-horas.svg  ícone do app (janela, menu e pacote)
+packaging/
+  tracker-horas.desktop  atalho de menu (instalado pelo .deb)
+.github/
+  workflows/release.yml  release automática (.deb) ao enviar tag v*
 tests/
   tst_model.cpp        domínio: status, horas, pausas, formatação
   tst_storage.cpp      persistência JSON e ponte de meia-noite

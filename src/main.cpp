@@ -2,6 +2,7 @@
 #include "theme.h"
 
 #include <QApplication>
+#include <QIcon>
 #include <QLocale>
 #include <QStyleFactory>
 
@@ -14,6 +15,7 @@ int main(int argc, char* argv[]) {
     app.setApplicationName(QStringLiteral("tracker-horas"));
     app.setApplicationDisplayName(QStringLiteral("Tracker Horas"));
     app.setDesktopFileName(QStringLiteral("tracker-horas"));
+    app.setWindowIcon(QIcon(QStringLiteral(":/tracker-horas.svg")));
     app.setStyle(QStyleFactory::create(QStringLiteral("Fusion")));
     QLocale::setDefault(QLocale(QLocale::Portuguese, QLocale::Brazil));
 

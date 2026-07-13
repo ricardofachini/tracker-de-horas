@@ -30,9 +30,33 @@ qt_add_resources(tracker-horas "assets"
     PREFIX "/"
     BASE assets
     FILES assets/style.qss assets/check.svg assets/arrow-down.svg
+          assets/tracker-horas.svg
 )
 
 target_link_libraries(tracker-horas PRIVATE Qt6::Widgets)
+
+# --------------------------------------------- Instalação e pacote .deb
+
+include(GNUInstallDirs)
+
+install(TARGETS tracker-horas RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
+install(FILES packaging/tracker-horas.desktop
+        DESTINATION ${CMAKE_INSTALL_DATADIR}/applications)
+install(FILES assets/tracker-horas.svg
+        DESTINATION ${CMAKE_INSTALL_DATADIR}/icons/hicolor/scalable/apps)
+
+set(CPACK_PACKAGE_NAME "tracker-horas")
+set(CPACK_PACKAGE_DESCRIPTION_SUMMARY
+    "Controle de ponto e tarefas diárias (Qt 6, Wayland nativo)")
+set(CPACK_PACKAGE_CONTACT "Ricardo Fachini <ricardofachinisouza@gmail.com>")
+set(CPACK_PACKAGE_HOMEPAGE_URL "https://github.com/ricardofachini/tracker-de-horas")
+set(CPACK_GENERATOR "DEB")
+set(CPACK_DEBIAN_FILE_NAME DEB-DEFAULT) # tracker-horas_<versão>_<arch>.deb
+set(CPACK_DEBIAN_PACKAGE_SECTION "utils")
+# dpkg-shlibdeps declara as dependências (libqt6widgets6 etc.) sozinho
+set(CPACK_DEBIAN_PACKAGE_SHLIBDEPS ON)
+set(CPACK_STRIP_FILES ON)
+include(CPack)
 
 # ------------------------------------------------------- Testes (ctest)
 
