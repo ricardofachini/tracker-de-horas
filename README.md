@@ -110,5 +110,12 @@ tests/
 - [x] Tratar turnos que cruzam a meia-noite (fechamento automático às
       23:59:59 + reabertura 00:00:00 na virada do dia; diálogo de resolução
       quando o app estava fechado).
+- [ ] **Banco de horas** — registrar e visualizar o saldo de horas: acumular
+      a diferença entre horas trabalhadas e a meta diária (crédito/débito),
+      com visualização do saldo acumulado (dia, mês e total).
+- [ ] Registrar e editar horas por tarefa — além do cronômetro, permitir
+      lançar e corrigir manualmente o tempo dedicado a cada tarefa.
+- [ ] Perguntar a tarefa ao bater o ponto de entrada — ao registrar a
+      entrada, oferecer escolher (ou criar) a tarefa que começa a correr.
 - [ ] Testes de UI (as páginas e diálogos ainda não têm testes automatizados;
       o domínio, a persistência e o CSV têm — veja `tests/`).
