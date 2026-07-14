@@ -11,7 +11,7 @@
 // Ícones desenhados em código com QPainter: sem arquivos de imagem nem
 // dependência do tema de ícones do sistema.
 
-enum class NavGlyph { Today, Sheet, History, Reports };
+enum class NavGlyph { Today, Sheet, Bank, History, Reports };
 
 inline QPixmap paintGlyph(NavGlyph glyph, const QColor& color, int size = 20) {
     // Desenha em 2x e informa o devicePixelRatio para ficar nítido em HiDPI.
@@ -35,6 +35,12 @@ inline QPixmap paintGlyph(NavGlyph glyph, const QColor& color, int size = 20) {
         painter.drawLine(QPointF(6.5, 2.5), QPointF(6.5, 6));
         painter.drawLine(QPointF(13.5, 2.5), QPointF(13.5, 6));
         painter.drawLine(QPointF(3, 8.5), QPointF(17, 8.5));
+        break;
+    case NavGlyph::Bank:  // banco de horas: círculo com + e −
+        painter.drawEllipse(QRectF(3, 3, 14, 14));
+        painter.drawLine(QPointF(8.2, 7.6), QPointF(11.8, 7.6));
+        painter.drawLine(QPointF(10, 5.8), QPointF(10, 9.4));
+        painter.drawLine(QPointF(8.2, 12.4), QPointF(11.8, 12.4));
         break;
     case NavGlyph::History:  // linhas de lista
         painter.drawLine(QPointF(4, 5.5), QPointF(16, 5.5));

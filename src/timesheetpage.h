@@ -27,5 +27,6 @@ private:
     TimesheetModel* m_model;
     QLabel* m_monthLabel;
     QLabel* m_totalLabel;
+    QLabel* m_balanceLabel;  // saldo do banco de horas no mês
     QPushButton* m_nextButton;
 };

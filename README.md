@@ -16,12 +16,22 @@ escrito em C++20 com Qt 6 Widgets e visual inspirado no Adwaita/GNOME.
   o tempo dedicado a cada uma fica somado na própria linha. Pausar ou
   encerrar o expediente também pausa a tarefa em andamento.
 - **Folha** — folha de ponto mensal em formato de planilha: entrada, saída,
-  pausas, horas trabalhadas e tarefas por dia, com navegação entre meses.
+  pausas, horas trabalhadas, saldo do banco de horas e tarefas por dia, com
+  navegação entre meses.
   Clique duplo em um dia abre o editor de registros, para corrigir, remover
   ou adicionar pontos também de dias passados. O botão "Exportar CSV" salva
   o mês exibido como planilha (separador `;`, UTF-8 com BOM, abre direto no
-  LibreOffice/Excel), incluindo as tarefas e o tempo dedicado a cada uma.
-- **Histórico** — lista dos dias registrados com total de horas e tarefas.
+  LibreOffice/Excel), incluindo o saldo diário e as tarefas com o tempo
+  dedicado a cada uma.
+- **Banco de horas** — página com o saldo acumulado de crédito/débito em
+  relação à meta diária: quanto você fez a mais (verde) ou a menos
+  (vermelho) em cada dia, com resumo (hoje, semana, mês) e lista dia a dia
+  agrupada por mês, com barrinhas comparáveis de crédito/débito. Dias sem
+  ponto não geram débito e o dia em andamento só entra no saldo quando o
+  expediente é encerrado. O saldo de cada dia também aparece no Histórico,
+  na coluna "Saldo" da Folha e no CSV exportado.
+- **Histórico** — lista dos dias registrados com total de horas, tarefas e
+  o saldo do dia no banco de horas.
 - **Relatórios** — resumo de horas de hoje, da semana, do mês e média diária,
   além do gráfico de barras "Horas por semana": horas trabalhadas por dia
   (seg–dom) com linha da meta, navegação entre semanas e detalhes no hover,
@@ -92,6 +102,7 @@ src/
   model.{h,cpp}   tipos de domínio: Punch, Task, DayRecord
   storage.{h,cpp} persistência em JSON + ponte de meia-noite
   appsettings.*   preferências (meta de jornada diária)
+  hourbank.*      banco de horas: regras de saldo (crédito/débito vs. meta)
   theme.*         paleta clara/escura e geração do QSS a partir de tokens
   widgets.h       helpers de UI (cards, labels com papel, estado dinâmico)
   card.*          card com sombra e hover animado
@@ -103,6 +114,7 @@ src/
   timesheetmodel.* modelo da folha mensal (model/view)
   timesheetpage.*  página Folha (QTableView)
   weekchart.*     gráfico de barras semanal desenhado com QPainter
+  bankpage.*      página Banco de horas (saldo acumulado + dia a dia)
   pages.*         Histórico e Relatórios
   mainwindow.*    janela com sidebar de navegação
 assets/
@@ -116,7 +128,8 @@ tests/
   tst_model.cpp        domínio: status, horas, pausas, formatação
   tst_storage.cpp      persistência JSON e ponte de meia-noite
   tst_appsettings.cpp  meta de jornada (padrão, limites)
-  tst_csvexport.cpp    conteúdo do CSV mensal (aspas, totais)
+  tst_hourbank.cpp     banco de horas (dias que contam, saldo, formato)
+  tst_csvexport.cpp    conteúdo do CSV mensal (aspas, totais, saldo)
 ```
 
 ## Roadmap
@@ -140,9 +153,10 @@ tests/
 - [x] Tratar turnos que cruzam a meia-noite (fechamento automático às
       23:59:59 + reabertura 00:00:00 na virada do dia; diálogo de resolução
       quando o app estava fechado).
-- [ ] **Banco de horas** — registrar e visualizar o saldo de horas: acumular
-      a diferença entre horas trabalhadas e a meta diária (crédito/débito),
-      com visualização do saldo acumulado (dia, mês e total).
+- [x] **Banco de horas** — saldo de crédito/débito em relação à meta diária:
+      página própria com saldo acumulado, resumo (hoje, semana, mês) e lista
+      dia a dia; o saldo do dia aparece também no Histórico, na coluna
+      "Saldo" da Folha e no CSV exportado.
 - [ ] Registrar e editar horas por tarefa — além do cronômetro, permitir
       lançar e corrigir manualmente o tempo dedicado a cada tarefa.
 - [ ] Perguntar a tarefa ao bater o ponto de entrada — ao registrar a

@@ -45,6 +45,7 @@ void HistoryPage::refresh() {
     }
 
     const QDate today = QDate::currentDate();
+    const int goal = AppSettings::journeySeconds();
     bool empty = true;
     for (const DayRecord& day : m_storage->allDays()) {
         if (day.punches.isEmpty() && day.tasks.isEmpty())
@@ -70,6 +71,20 @@ void HistoryPage::refresh() {
                                   "muted"));
         rowLayout->addLayout(left);
         rowLayout->addStretch();
+
+        // Saldo do dia no banco de horas (dias sem ponto não têm saldo).
+        if (HourBank::dayCounts(day)) {
+            const bool open = day.date == today && day.status() != DayRecord::Status::Done;
+            const int balance =
+                HourBank::dayBalance(day, goal, open ? QTime::currentTime() : QTime());
+            auto* pill = makeBalancePill(balance, open);
+            pill->setToolTip(open ? QStringLiteral("Saldo parcial — o dia entra no banco "
+                                                   "quando o expediente é encerrado.")
+                                  : QStringLiteral("Saldo do dia no banco de horas "
+                                                   "(trabalhadas − meta)."));
+            rowLayout->addWidget(pill, 0, Qt::AlignVCenter);
+            rowLayout->addSpacing(16);
+        }
 
         auto* right = new QVBoxLayout;
         right->setSpacing(2);
@@ -162,7 +177,8 @@ ReportsPage::ReportsPage(Storage* storage, QWidget* parent)
     goalTexts->setSpacing(2);
     goalTexts->addWidget(makeLabel(QStringLiteral("Meta de jornada diária"), "h2"));
     goalTexts->addWidget(makeLabel(
-        QStringLiteral("Usada na barra de progresso da página Hoje e na linha de meta do gráfico."),
+        QStringLiteral("Usada na barra da página Hoje, na linha de meta do gráfico "
+                       "e no cálculo do banco de horas."),
         "muted"));
     goalLayout->addLayout(goalTexts);
     goalLayout->addStretch();

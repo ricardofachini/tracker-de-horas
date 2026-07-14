@@ -1,5 +1,6 @@
 #include "mainwindow.h"
 
+#include "bankpage.h"
 #include "icons.h"
 #include "pages.h"
 #include "punchedit.h"
@@ -38,12 +39,14 @@ MainWindow::MainWindow() {
 
     m_todayPage = new TodayPage(&m_storage);
     m_sheetPage = new TimesheetPage(&m_storage);
+    m_bankPage = new BankPage(&m_storage);
     m_historyPage = new HistoryPage(&m_storage);
     m_reportsPage = new ReportsPage(&m_storage);
 
     m_stack = new QStackedWidget;
     m_stack->addWidget(m_todayPage);
     m_stack->addWidget(m_sheetPage);
+    m_stack->addWidget(m_bankPage);
     m_stack->addWidget(m_historyPage);
     m_stack->addWidget(m_reportsPage);
 
@@ -78,8 +81,10 @@ MainWindow::MainWindow() {
             if (index == 1)
                 m_sheetPage->refresh();
             else if (index == 2)
-                m_historyPage->refresh();
+                m_bankPage->refresh();
             else if (index == 3)
+                m_historyPage->refresh();
+            else if (index == 4)
                 m_reportsPage->refresh();
             m_stack->setCurrentIndex(index);
             slideIn(m_stack->currentWidget());
@@ -89,8 +94,9 @@ MainWindow::MainWindow() {
     };
     addNav(QStringLiteral("Hoje"), NavGlyph::Today, 0)->setChecked(true);
     addNav(QStringLiteral("Folha"), NavGlyph::Sheet, 1);
-    addNav(QStringLiteral("Histórico"), NavGlyph::History, 2);
-    addNav(QStringLiteral("Relatórios"), NavGlyph::Reports, 3);
+    addNav(QStringLiteral("Banco de horas"), NavGlyph::Bank, 2);
+    addNav(QStringLiteral("Histórico"), NavGlyph::History, 3);
+    addNav(QStringLiteral("Relatórios"), NavGlyph::Reports, 4);
 
     sideLayout->addStretch();
 

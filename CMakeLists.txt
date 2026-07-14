@@ -12,6 +12,7 @@ qt_add_executable(tracker-horas
     src/model.h src/model.cpp
     src/storage.h src/storage.cpp
     src/appsettings.h src/appsettings.cpp
+    src/hourbank.h src/hourbank.cpp
     src/theme.h src/theme.cpp
     src/card.h src/card.cpp
     src/icons.h
@@ -22,6 +23,7 @@ qt_add_executable(tracker-horas
     src/timesheetmodel.h src/timesheetmodel.cpp
     src/timesheetpage.h src/timesheetpage.cpp
     src/weekchart.h src/weekchart.cpp
+    src/bankpage.h src/bankpage.cpp
     src/pages.h src/pages.cpp
     src/mainwindow.h src/mainwindow.cpp
 )
@@ -74,7 +76,8 @@ endfunction()
 add_unit_test(tst_model src/model.cpp)
 add_unit_test(tst_storage src/storage.cpp src/model.cpp)
 add_unit_test(tst_appsettings src/appsettings.cpp)
+add_unit_test(tst_hourbank src/hourbank.cpp src/model.cpp)
 add_unit_test(tst_csvexport
     src/csvexport.cpp src/storage.cpp src/model.cpp
-    src/card.cpp src/theme.cpp)
+    src/card.cpp src/theme.cpp src/appsettings.cpp src/hourbank.cpp)
 target_link_libraries(tst_csvexport PRIVATE Qt6::Widgets)

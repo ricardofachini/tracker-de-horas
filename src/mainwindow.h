@@ -7,6 +7,7 @@
 #include <QMainWindow>
 #include <QPair>
 
+class BankPage;
 class HistoryPage;
 class ReportsPage;
 class TimesheetPage;
@@ -25,6 +26,7 @@ private:
     QStackedWidget* m_stack;
     TodayPage* m_todayPage;
     TimesheetPage* m_sheetPage;
+    BankPage* m_bankPage;
     HistoryPage* m_historyPage;
     ReportsPage* m_reportsPage;
     QList<QPair<QPushButton*, NavGlyph>> m_navButtons;

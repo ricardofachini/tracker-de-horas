@@ -95,6 +95,29 @@ QLabel#workedLabel[state="done"]    { color: @accentStrong; }
 
 QLabel#statValue { font-size: 28px; font-weight: 800; }
 
+/* ------------------------------------------------------- Banco de horas */
+
+QLabel#bankTotal { font-size: 44px; font-weight: 800; }
+
+/* Saldos coloridos (propriedade dinâmica "balance"): crédito verde,
+   débito vermelho, zerado neutro e âmbar para o dia em andamento. */
+QLabel[balance="credit"]  { color: @successText; }
+QLabel[balance="debit"]   { color: @dangerText; }
+QLabel[balance="zero"]    { color: @textMuted; }
+QLabel[balance="partial"] { color: @warnText; }
+
+QLabel#balancePill {
+    padding: 4px 12px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 700;
+    background: @track;
+    color: @textMuted;
+}
+QLabel#balancePill[balance="credit"]  { background: @successSoft; color: @successText; }
+QLabel#balancePill[balance="debit"]   { background: @dangerSoft;  color: @dangerText; }
+QLabel#balancePill[balance="partial"] { background: @warnSoft;    color: @warnText; }
+
 /* -------------------------------------------------------- Pílula status */
 
 QLabel#statusPill {

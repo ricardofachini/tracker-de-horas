@@ -1,5 +1,6 @@
 #include "csvexport.h"
 
+#include "appsettings.h"
 #include "storage.h"
 #include "widgets.h"
 
@@ -23,6 +24,15 @@ QString csvField(QString value) {
         return QLatin1Char('"') + value + QLatin1Char('"');
     }
     return value;
+}
+
+// Saldo com sinal em hh:mm:ss ("+01:00:00", "-00:30:00") — ASCII, para a
+// planilha não tropeçar no menos tipográfico da interface.
+QString signedDuration(int seconds) {
+    const QString body = formatDuration(qAbs(seconds), true);
+    if (seconds == 0)
+        return body;
+    return (seconds > 0 ? QLatin1Char('+') : QLatin1Char('-')) + body;
 }
 
 // "Escrever relatório (1h 05min) ✓"
@@ -72,8 +82,10 @@ QString monthCsv(const Storage& storage, const QDate& month) {
     const QDate today = QDate::currentDate();
     const QLocale locale;
 
-    QString out = QStringLiteral("Data;Dia;Entrada;Saída;Pausas;Trabalhadas;Tarefas\r\n");
+    QString out = QStringLiteral("Data;Dia;Entrada;Saída;Pausas;Trabalhadas;Saldo;Tarefas\r\n");
+    const int goal = AppSettings::journeySeconds();
     int totalSeconds = 0;
+    int totalBalance = 0;
     for (int i = 0; i < first.daysInMonth(); ++i) {
         const QDate date = first.addDays(i);
         const DayRecord* day = storage.find(date);
@@ -85,6 +97,16 @@ QString monthCsv(const Storage& storage, const QDate& month) {
         const int breaks = day ? day->breakSeconds(now) : 0;
         const int worked = day ? day->workedSeconds(now) : 0;
         totalSeconds += worked;
+
+        // Saldo do banco de horas, com as regras da Folha: só dias com
+        // ponto, e o dia em andamento fecha ao encerrar o expediente.
+        QString balanceField;
+        if (day && HourBank::dayCounts(*day)
+            && !(date == today && day->status() != DayRecord::Status::Done)) {
+            const int balance = HourBank::dayBalance(*day, goal);
+            totalBalance += balance;
+            balanceField = signedDuration(balance);
+        }
 
         QStringList tasks;
         if (day)
@@ -98,12 +120,14 @@ QString monthCsv(const Storage& storage, const QDate& month) {
                << (lastOut.isValid() ? lastOut.toString(QStringLiteral("HH:mm")) : QString())
                << (breaks > 0 ? formatDuration(breaks, true) : QString())
                << (worked > 0 ? formatDuration(worked, true) : QString())
+               << balanceField
                << tasks.join(QStringLiteral(" | "));
         for (QString& field : fields)
             field = csvField(field);
         out += fields.join(QLatin1Char(';')) + QStringLiteral("\r\n");
     }
-    out += QStringLiteral("Total do mês;;;;;%1;\r\n").arg(formatDuration(totalSeconds, true));
+    out += QStringLiteral("Total do mês;;;;;%1;%2;\r\n")
+               .arg(formatDuration(totalSeconds, true), signedDuration(totalBalance));
     return out;
 }
 
