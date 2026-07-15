@@ -80,6 +80,25 @@ private slots:
         QVERIFY(day->tasks[1].isRunning());  // "end" ausente volta como aberto
     }
 
+    void manualAdjustRoundTrip() {
+        const QDate date(2026, 7, 9);
+        {
+            Storage storage;
+            storage.day(date).tasks = {
+                Task{QStringLiteral("Só ajuste"), false, {}, 45 * 60},
+                Task{QStringLiteral("Sem ajuste"), false, {{QTime(9, 0), QTime(9, 30)}}}};
+            storage.save();
+        }
+
+        Storage reloaded;
+        const DayRecord* day = reloaded.find(date);
+        QVERIFY(day != nullptr);
+        QCOMPARE(day->tasks[0].adjustSeconds, 45 * 60);
+        QCOMPARE(day->tasks[0].spentSeconds(), 45 * 60);
+        QCOMPARE(day->tasks[1].adjustSeconds, 0);  // ausente no JSON volta zerado
+        QCOMPARE(day->tasks[1].spentSeconds(), 30 * 60);
+    }
+
     void emptyDaysAreNotPersisted() {
         const QDate date(2026, 7, 7);
         {

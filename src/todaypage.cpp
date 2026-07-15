@@ -3,6 +3,7 @@
 #include "appsettings.h"
 #include "punchedit.h"
 #include "storage.h"
+#include "taskedit.h"
 #include "theme.h"
 #include "widgets.h"
 
@@ -99,6 +100,7 @@ TodayPage::TodayPage(Storage* storage, QWidget* parent)
     m_punchEmpty = makeLabel(QStringLiteral("Nenhum registro ainda.\nBata o ponto para começar o dia."), "muted");
     punchLayout->addWidget(m_punchEmpty);
     m_punchList = new QListWidget;
+    m_punchList->setObjectName("punchList");
     m_punchList->setSelectionMode(QAbstractItemView::NoSelection);
     m_punchList->setFocusPolicy(Qt::NoFocus);
     punchLayout->addWidget(m_punchList, 1);
@@ -126,6 +128,7 @@ TodayPage::TodayPage(Storage* storage, QWidget* parent)
     m_taskEmpty = makeLabel(QStringLiteral("Nenhuma tarefa registrada hoje."), "muted");
     taskLayout->addWidget(m_taskEmpty);
     m_taskList = new QListWidget;
+    m_taskList->setObjectName("taskList");
     m_taskList->setSelectionMode(QAbstractItemView::NoSelection);
     m_taskList->setFocusPolicy(Qt::NoFocus);
     taskLayout->addWidget(m_taskList, 1);
@@ -159,14 +162,17 @@ void TodayPage::punch(PunchType type) {
     const QTime now = QTime::currentTime();
     day.punches.append({type, now});
     // Pausar ou encerrar o expediente também pausa a tarefa em andamento.
-    if (type == PunchType::BreakStart || type == PunchType::Out) {
-        const int running = day.runningTaskIndex();
-        if (running >= 0)
-            day.tasks[running].intervals.last().end = now;
-    }
+    if (type == PunchType::BreakStart || type == PunchType::Out)
+        day.pauseRunningTask(now);
     m_storage->save();
     refresh();
     tick();
+    // Entrada: oferecer escolher (ou criar) a tarefa que começa a correr.
+    if (type == PunchType::In && askTaskOnPunchInDialog(this, day, now)) {
+        m_storage->save();
+        refresh();
+        tick();
+    }
 }
 
 void TodayPage::addTask() {
@@ -197,11 +203,9 @@ void TodayPage::startTask(int index) {
     if (index < 0 || index >= day.tasks.size())
         return;
     const QTime now = QTime::currentTime();
-    const int running = day.runningTaskIndex();
-    if (running == index)
+    if (day.runningTaskIndex() == index)
         return;
-    if (running >= 0)  // preempção: só uma tarefa corre por vez
-        day.tasks[running].intervals.last().end = now;
+    day.pauseRunningTask(now);  // preempção: só uma tarefa corre por vez
     day.tasks[index].intervals.append({now, QTime()});
     m_storage->save();
     scheduleRefresh();
@@ -215,6 +219,16 @@ void TodayPage::pauseTask(int index) {
     if (!task.isRunning())
         return;
     task.intervals.last().end = QTime::currentTime();
+    m_storage->save();
+    scheduleRefresh();
+}
+
+void TodayPage::editTaskTime(int index) {
+    DayRecord& day = today();
+    if (index < 0 || index >= day.tasks.size())
+        return;
+    if (!editTaskTimeDialog(this, day.tasks[index]))
+        return;
     m_storage->save();
     scheduleRefresh();
 }
@@ -345,6 +359,14 @@ void TodayPage::refresh() {
             timeLabel->setText(formatDuration(spent));
         }
         rowLayout->addWidget(timeLabel);
+
+        // Lançar ou corrigir manualmente o tempo dedicado (visível também
+        // em tarefas concluídas, para acertar o total depois).
+        auto* editTime = makeRowActionButton(ActionGlyph::Edit, Theme::iconMuted(),
+                                             Theme::accentStrong(),
+                                             QStringLiteral("Ajustar tempo dedicado"));
+        connect(editTime, &QToolButton::clicked, this, [this, i] { editTaskTime(i); });
+        rowLayout->addWidget(editTime);
 
         QToolButton* action;
         if (running) {

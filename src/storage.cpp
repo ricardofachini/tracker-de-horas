@@ -61,9 +61,7 @@ bool Storage::bridgeMidnight(const QDate& date) {
 
     const QTime endOfDay(23, 59, 59);
     DayRecord& previous = day(date);
-    const int running = previous.runningTaskIndex();
-    if (running >= 0)
-        previous.tasks[running].intervals.last().end = endOfDay;
+    previous.pauseRunningTask(endOfDay);
     previous.punches.append({PunchType::Out, endOfDay});
 
     // Reabre o dia seguinte antes de qualquer registro que ele já tenha
@@ -103,7 +101,8 @@ void Storage::load() {
             const QJsonObject to = tv.toObject();
             Task task{to.value(QLatin1String("text")).toString(),
                       to.value(QLatin1String("done")).toBool(),
-                      {}};
+                      {},
+                      to.value(QLatin1String("adjust")).toInt()};
             for (const QJsonValue& iv : to.value(QLatin1String("intervals")).toArray()) {
                 const QJsonObject io = iv.toObject();
                 const QTime start = QTime::fromString(io.value(QLatin1String("start")).toString(),
@@ -133,6 +132,8 @@ void Storage::save() const {
         for (const Task& t : record.tasks) {
             QJsonObject to{{QStringLiteral("text"), t.text},
                            {QStringLiteral("done"), t.done}};
+            if (t.adjustSeconds != 0)
+                to.insert(QStringLiteral("adjust"), t.adjustSeconds);
             if (!t.intervals.isEmpty()) {
                 QJsonArray intervals;
                 for (const TaskInterval& i : t.intervals) {

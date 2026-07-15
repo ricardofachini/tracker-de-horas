@@ -38,6 +38,24 @@ private slots:
         QCOMPARE(task.spentSeconds(), 0);
     }
 
+    void taskSpentSecondsIncludesManualAdjust() {
+        Task task{QStringLiteral("t"), false, {{QTime(9, 0), QTime(10, 0)}}, 30 * 60};
+        QCOMPARE(task.spentSeconds(), 90 * 60);
+
+        task.adjustSeconds = -30 * 60;  // correção para baixo
+        QCOMPARE(task.spentSeconds(), 30 * 60);
+
+        task.adjustSeconds = -2 * 3600;  // nunca fica negativo
+        QCOMPARE(task.spentSeconds(), 0);
+    }
+
+    void taskManualAdjustAloneCounts() {
+        // Tempo lançado à mão, sem nenhuma sessão de cronômetro.
+        Task task{QStringLiteral("t"), false, {}, 45 * 60};
+        QCOMPARE(task.spentSeconds(), 45 * 60);
+        QVERIFY(!task.isRunning());
+    }
+
     // -------------------------------------------------------- DayRecord
     void dayStatus() {
         DayRecord day;
@@ -124,6 +142,18 @@ private slots:
         day.tasks = {Task{QStringLiteral("a"), false, {{QTime(9, 0), QTime(9, 30)}}},
                      Task{QStringLiteral("b"), false, {{QTime(10, 0), QTime()}}}};
         QCOMPARE(day.runningTaskIndex(), 1);
+    }
+
+    void pauseRunningTaskClosesOpenInterval() {
+        DayRecord day;
+        QVERIFY(!day.pauseRunningTask(QTime(10, 0)));  // nada correndo
+
+        day.tasks = {Task{QStringLiteral("a"), false, {{QTime(9, 0), QTime()}}}};
+        QVERIFY(day.pauseRunningTask(QTime(10, 0)));
+        QVERIFY(!day.tasks[0].isRunning());
+        QCOMPARE(day.tasks[0].spentSeconds(), 3600);
+
+        QVERIFY(!day.pauseRunningTask(QTime(11, 0)));  // já pausada
     }
 
     void sortPunchesIsChronologicalAndStable() {

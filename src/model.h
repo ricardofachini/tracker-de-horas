@@ -23,11 +23,13 @@ struct Task {
     QString text;
     bool done = false;
     QList<TaskInterval> intervals;  // sessões de trabalho nesta tarefa
+    int adjustSeconds = 0;          // correção manual, somada ao cronômetro
 
     bool isRunning() const;  // há um intervalo aberto?
 
-    // Segundos dedicados à tarefa. Se ela está em andamento, `now` fecha
-    // o intervalo aberto (passe QTime() para ignorá-lo).
+    // Segundos dedicados à tarefa: cronômetro + ajuste manual. Se ela está
+    // em andamento, `now` fecha o intervalo aberto (passe QTime() para
+    // ignorá-lo).
     int spentSeconds(const QTime& now = QTime()) const;
 };
 
@@ -52,6 +54,10 @@ struct DayRecord {
     QTime lastOut() const;  // última saída do dia (QTime() se não houver)
 
     int runningTaskIndex() const;  // tarefa em andamento (-1 se nenhuma)
+
+    // Fecha em `now` o intervalo da tarefa em andamento, se houver.
+    // Retorna true se alguma tarefa estava correndo.
+    bool pauseRunningTask(const QTime& now);
 
     // Reordena os registros por horário — necessário após editar um ponto,
     // pois status() e workedSeconds() dependem da ordem cronológica.

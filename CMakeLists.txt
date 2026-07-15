@@ -19,6 +19,7 @@ qt_add_executable(tracker-horas
     src/widgets.h
     src/csvexport.h src/csvexport.cpp
     src/punchedit.h src/punchedit.cpp
+    src/taskedit.h src/taskedit.cpp
     src/todaypage.h src/todaypage.cpp
     src/timesheetmodel.h src/timesheetmodel.cpp
     src/timesheetpage.h src/timesheetpage.cpp
@@ -81,3 +82,24 @@ add_unit_test(tst_csvexport
     src/csvexport.cpp src/storage.cpp src/model.cpp
     src/card.cpp src/theme.cpp src/appsettings.cpp src/hourbank.cpp)
 target_link_libraries(tst_csvexport PRIVATE Qt6::Widgets)
+
+# Testes de UI (páginas e diálogos): dirigem os widgets de verdade, com os
+# diálogos modais acionados via tests/testutils.h.
+add_unit_test(tst_taskedit
+    src/taskedit.cpp src/model.cpp src/card.cpp src/theme.cpp src/hourbank.cpp)
+target_link_libraries(tst_taskedit PRIVATE Qt6::Widgets)
+
+add_unit_test(tst_punchedit
+    src/punchedit.cpp src/storage.cpp src/model.cpp
+    src/card.cpp src/theme.cpp src/hourbank.cpp)
+target_link_libraries(tst_punchedit PRIVATE Qt6::Widgets)
+
+add_unit_test(tst_todaypage
+    src/todaypage.cpp src/punchedit.cpp src/taskedit.cpp src/storage.cpp
+    src/model.cpp src/appsettings.cpp src/hourbank.cpp src/card.cpp src/theme.cpp)
+target_link_libraries(tst_todaypage PRIVATE Qt6::Widgets)
+
+add_unit_test(tst_timesheetmodel
+    src/timesheetmodel.cpp src/storage.cpp src/model.cpp
+    src/appsettings.cpp src/hourbank.cpp src/theme.cpp)
+target_link_libraries(tst_timesheetmodel PRIVATE Qt6::Widgets)

@@ -7,7 +7,7 @@ bool Task::isRunning() const {
 }
 
 int Task::spentSeconds(const QTime& now) const {
-    int total = 0;
+    int total = adjustSeconds;
     for (const TaskInterval& interval : intervals) {
         if (interval.end.isValid())
             total += interval.start.secsTo(interval.end);
@@ -88,6 +88,14 @@ int DayRecord::runningTaskIndex() const {
         if (tasks[i].isRunning())
             return i;
     return -1;
+}
+
+bool DayRecord::pauseRunningTask(const QTime& now) {
+    const int running = runningTaskIndex();
+    if (running < 0)
+        return false;
+    tasks[running].intervals.last().end = now;
+    return true;
 }
 
 void DayRecord::sortPunches() {

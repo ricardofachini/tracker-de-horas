@@ -15,6 +15,14 @@ escrito em C++20 com Qt 6 Widgets e visual inspirado no Adwaita/GNOME.
   estava em andamento (comece a 2, volte para a 1, termine a 1, retome a 2);
   o tempo dedicado a cada uma fica somado na própria linha. Pausar ou
   encerrar o expediente também pausa a tarefa em andamento.
+- **Horas por tarefa também à mão** — o lápis em cada linha de tarefa abre
+  o "Ajustar tempo dedicado": o valor digitado vira o total da tarefa, para
+  lançar tempo sem cronômetro ou corrigir para cima/baixo (funciona até em
+  tarefa concluída). A diferença fica guardada como ajuste manual e o
+  cronômetro, se estiver correndo, segue contando a partir do valor salvo.
+- **Tarefa na entrada** — ao registrar a entrada o app pergunta qual tarefa
+  você vai fazer agora: escolha uma pendente ou crie uma na hora, e o
+  cronômetro dela já parte da hora da entrada ("Agora não" pula).
 - **Folha** — folha de ponto mensal em formato de planilha: entrada, saída,
   pausas, horas trabalhadas, saldo do banco de horas e tarefas por dia, com
   navegação entre meses.
@@ -88,7 +96,10 @@ git push origin v0.1.0
 ## Testes
 
 Testes unitários (Qt Test) cobrem o modelo de domínio, a persistência, a
-ponte de meia-noite, a meta configurável e a exportação CSV:
+ponte de meia-noite, a meta configurável e a exportação CSV. Testes de UI
+dirigem os widgets de verdade em modo offscreen: a página Hoje, o modelo da
+Folha e os diálogos (edição de ponto, turno aberto, ajuste de tempo e tarefa
+na entrada), com os modais acionados por timer (`tests/testutils.h`):
 
 ```bash
 ctest --test-dir build --output-on-failure
@@ -110,6 +121,8 @@ src/
   csvexport.*     exportação da folha mensal em CSV
   punchedit.*     edição de registros: diálogos e linhas com editar/remover
                   + diálogo de turno aberto na véspera
+  taskedit.*      diálogos de tarefa: ajuste manual do tempo dedicado
+                  + escolha da tarefa ao registrar a entrada
   todaypage.*     página principal (ponto + tarefas)
   timesheetmodel.* modelo da folha mensal (model/view)
   timesheetpage.*  página Folha (QTableView)
@@ -125,11 +138,16 @@ packaging/
 .github/
   workflows/release.yml  release automática (.deb) ao enviar tag v*
 tests/
-  tst_model.cpp        domínio: status, horas, pausas, formatação
+  tst_model.cpp        domínio: status, horas, pausas, ajuste manual, formatação
   tst_storage.cpp      persistência JSON e ponte de meia-noite
   tst_appsettings.cpp  meta de jornada (padrão, limites)
   tst_hourbank.cpp     banco de horas (dias que contam, saldo, formato)
   tst_csvexport.cpp    conteúdo do CSV mensal (aspas, totais, saldo)
+  testutils.h          helpers de teste de UI (clique, diálogos modais)
+  tst_taskedit.cpp     diálogos de tarefa (ajuste de tempo, tarefa na entrada)
+  tst_punchedit.cpp    diálogos de ponto (editar, remover, dia inteiro, turno aberto)
+  tst_todaypage.cpp    página Hoje (botões de ponto, tarefas, preempção)
+  tst_timesheetmodel.cpp modelo da Folha (células, saldo, totais do mês)
 ```
 
 ## Roadmap
@@ -157,9 +175,11 @@ tests/
       página própria com saldo acumulado, resumo (hoje, semana, mês) e lista
       dia a dia; o saldo do dia aparece também no Histórico, na coluna
       "Saldo" da Folha e no CSV exportado.
-- [ ] Registrar e editar horas por tarefa — além do cronômetro, permitir
-      lançar e corrigir manualmente o tempo dedicado a cada tarefa.
-- [ ] Perguntar a tarefa ao bater o ponto de entrada — ao registrar a
-      entrada, oferecer escolher (ou criar) a tarefa que começa a correr.
-- [ ] Testes de UI (as páginas e diálogos ainda não têm testes automatizados;
-      o domínio, a persistência e o CSV têm — veja `tests/`).
+- [x] Registrar e editar horas por tarefa — além do cronômetro, o tempo de
+      cada tarefa pode ser lançado e corrigido à mão (lápis na linha, diálogo
+      "Ajustar tempo dedicado").
+- [x] Perguntar a tarefa ao bater o ponto de entrada — ao registrar a
+      entrada, o app oferece escolher (ou criar) a tarefa que começa a correr.
+- [x] Testes de UI — a página Hoje, o modelo da Folha e os diálogos têm
+      testes automatizados dirigindo os widgets em modo offscreen
+      (veja `tests/`).

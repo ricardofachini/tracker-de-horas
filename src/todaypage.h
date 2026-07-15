@@ -27,6 +27,7 @@ private:
     void setTaskDone(int index, bool done);
     void startTask(int index);  // preempção: pausa a tarefa em andamento
     void pauseTask(int index);
+    void editTaskTime(int index);  // lançar/corrigir o tempo manualmente
     void clearDoneTasks();
     void scheduleRefresh();  // adiado: seguro para handlers dentro das linhas
     void tick();             // atualiza relógio e contadores a cada segundo
