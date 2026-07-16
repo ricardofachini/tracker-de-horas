@@ -103,3 +103,9 @@ add_unit_test(tst_timesheetmodel
     src/timesheetmodel.cpp src/storage.cpp src/model.cpp
     src/appsettings.cpp src/hourbank.cpp src/theme.cpp)
 target_link_libraries(tst_timesheetmodel PRIVATE Qt6::Widgets)
+
+add_unit_test(tst_timesheetpage
+    src/timesheetpage.cpp src/timesheetmodel.cpp src/punchedit.cpp
+    src/csvexport.cpp src/storage.cpp src/model.cpp
+    src/appsettings.cpp src/hourbank.cpp src/card.cpp src/theme.cpp)
+target_link_libraries(tst_timesheetpage PRIVATE Qt6::Widgets)

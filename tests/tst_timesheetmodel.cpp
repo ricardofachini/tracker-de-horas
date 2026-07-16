@@ -117,6 +117,32 @@ private slots:
         QCOMPARE(model.monthTotalSeconds(), 16 * 3600);
     }
 
+    void canEditOnlyClosedDays() {
+        Storage storage;
+        const QDate today(2026, 7, 15);
+
+        // Dias passados sempre podem ser corrigidos — inclusive um que ficou
+        // com o expediente aberto (é justamente o que precisa de correção).
+        fillWorkday(storage.day(today.addDays(-1)));
+        storage.day(today.addDays(-3)).punches = {{PunchType::In, QTime(8, 0)}};
+        QVERIFY(TimesheetModel::canEditDay(&storage, today.addDays(-1), today));
+        QVERIFY(TimesheetModel::canEditDay(&storage, today.addDays(-3), today));
+        QVERIFY(TimesheetModel::canEditDay(&storage, today.addDays(-7), today));  // sem registro
+
+        // Dias futuros nunca.
+        QVERIFY(!TimesheetModel::canEditDay(&storage, today.addDays(1), today));
+
+        // Hoje: só depois de encerrado o expediente.
+        QVERIFY(TimesheetModel::canEditDay(&storage, today, today));  // sem registro
+        DayRecord& day = storage.day(today);
+        day.punches = {{PunchType::In, QTime(8, 0)}};
+        QVERIFY(!TimesheetModel::canEditDay(&storage, today, today));  // trabalhando
+        day.punches.append({PunchType::BreakStart, QTime(12, 0)});
+        QVERIFY(!TimesheetModel::canEditDay(&storage, today, today));  // em pausa
+        day.punches.append({PunchType::Out, QTime(17, 0)});
+        QVERIFY(TimesheetModel::canEditDay(&storage, today, today));  // encerrado
+    }
+
     void manualTaskAdjustCountsInTaskColumnData() {
         // O ajuste manual não muda a contagem de tarefas, mas garante que
         // dias com tarefa sem ponto continuam aparecendo na Folha.

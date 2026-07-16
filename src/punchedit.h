@@ -21,6 +21,9 @@ bool editPunchDialog(QWidget* parent, Punch& punch,
 // Confirmação estilizada para remoções. true = usuário confirmou.
 bool confirmRemoveDialog(QWidget* parent, const QString& question, const QString& detail);
 
+// Aviso estilizado com um único botão de OK.
+void infoDialog(QWidget* parent, const QString& title, const QString& detail);
+
 // Turno que atravessou a meia-noite com o app fechado (ou o PC suspenso):
 // `openDay` ficou com o expediente aberto. Pergunta se o usuário continuou
 // trabalhando (ponte para o dia seguinte, com ou sem saída na madrugada) ou

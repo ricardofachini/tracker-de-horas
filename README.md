@@ -26,8 +26,10 @@ escrito em C++20 com Qt 6 Widgets e visual inspirado no Adwaita/GNOME.
 - **Folha** — folha de ponto mensal em formato de planilha: entrada, saída,
   pausas, horas trabalhadas, saldo do banco de horas e tarefas por dia, com
   navegação entre meses.
-  Clique duplo em um dia abre o editor de registros, para corrigir, remover
-  ou adicionar pontos também de dias passados. O botão "Exportar CSV" salva
+  Clique duplo em um dia já encerrado abre o editor de registros, para
+  corrigir, remover ou adicionar pontos de dias passados. O dia em andamento
+  é protegido: enquanto o expediente estiver aberto, os ajustes de hoje são
+  feitos pela página Hoje. O botão "Exportar CSV" salva
   o mês exibido como planilha (separador `;`, UTF-8 com BOM, abre direto no
   LibreOffice/Excel), incluindo o saldo diário e as tarefas com o tempo
   dedicado a cada uma.
@@ -148,6 +150,7 @@ tests/
   tst_punchedit.cpp    diálogos de ponto (editar, remover, dia inteiro, turno aberto)
   tst_todaypage.cpp    página Hoje (botões de ponto, tarefas, preempção)
   tst_timesheetmodel.cpp modelo da Folha (células, saldo, totais do mês)
+  tst_timesheetpage.cpp  página Folha (clique duplo edita só dias encerrados)
 ```
 
 ## Roadmap
@@ -157,7 +160,8 @@ tests/
       tarefas, com navegação entre meses e total mensal (página "Folha",
       `QAbstractTableModel` + `QTableView`).
 - [x] Editar/remover registros de ponto já feitos (na página Hoje e pela
-      Folha com clique duplo, incluindo dias passados).
+      Folha com clique duplo, incluindo dias passados; a Folha só edita
+      dias já encerrados — o dia com expediente aberto é protegido).
 - [x] Cronômetro por tarefa com preempção: play/pause em cada tarefa, só
       uma corre por vez e trocar de tarefa pausa a anterior.
 - [x] Gráficos por semana nos Relatórios (barras por dia com linha de meta,

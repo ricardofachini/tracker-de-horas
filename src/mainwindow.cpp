@@ -138,10 +138,7 @@ MainWindow::MainWindow() {
     QTimer::singleShot(0, this, [this] {
         const QDate yesterday = QDate::currentDate().addDays(-1);
         const DayRecord* day = m_storage.find(yesterday);
-        if (!day)
-            return;
-        const DayRecord::Status status = day->status();
-        if (status != DayRecord::Status::Working && status != DayRecord::Status::OnBreak)
+        if (!day || !day->hasOpenShift())
             return;
         if (resolveOpenShiftDialog(&m_storage, yesterday, this))
             m_todayPage->refresh();

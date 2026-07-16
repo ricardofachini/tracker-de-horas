@@ -25,6 +25,12 @@ public:
     int monthBalanceSeconds() const;  // saldo do banco de horas no mês
     QDate dateForRow(int row) const;
 
+    // A Folha só corrige dias já encerrados: dias passados sempre; o dia
+    // atual apenas com o expediente fechado (aberto, ajuste pela página
+    // Hoje); dias futuros nunca.
+    static bool canEditDay(const Storage* storage, const QDate& date,
+                           const QDate& today = QDate::currentDate());
+
     int rowCount(const QModelIndex& parent = {}) const override;
     int columnCount(const QModelIndex& parent = {}) const override;
     QVariant data(const QModelIndex& index, int role) const override;

@@ -43,6 +43,9 @@ struct DayRecord {
 
     Status status() const;
 
+    // Expediente ainda aberto (trabalhando ou em pausa, sem saída final)?
+    bool hasOpenShift() const;
+
     // Segundos trabalhados. Se o expediente ainda está aberto, `now`
     // fecha o intervalo em andamento (passe QTime() para ignorá-lo).
     int workedSeconds(const QTime& now = QTime()) const;

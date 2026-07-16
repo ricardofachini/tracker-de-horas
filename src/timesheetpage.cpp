@@ -24,7 +24,8 @@ TimesheetPage::TimesheetPage(Storage* storage, QWidget* parent) : QWidget(parent
     titles->setSpacing(2);
     titles->addWidget(makeLabel(QStringLiteral("Folha de ponto"), "h1"));
     titles->addWidget(makeLabel(
-        QStringLiteral("Entrada, saída e horas dia a dia · clique duplo em um dia para corrigir"),
+        QStringLiteral(
+            "Entrada, saída e horas dia a dia · clique duplo em um dia encerrado para corrigir"),
         "muted"));
     header->addLayout(titles);
     header->addStretch();
@@ -92,7 +93,9 @@ TimesheetPage::TimesheetPage(Storage* storage, QWidget* parent) : QWidget(parent
     connect(m_nextButton, &QPushButton::clicked, this,
             [this] { setMonth(m_model->month().addMonths(1)); });
 
-    // Clique duplo em um dia: corrigir/remover/adicionar registros de ponto.
+    // Clique duplo em um dia já encerrado: corrigir/remover/adicionar
+    // registros de ponto. O dia em andamento é protegido — nele os ajustes
+    // são feitos pela página Hoje.
     connect(table, &QTableView::doubleClicked, this,
             [this, storage](const QModelIndex& index) {
                 if (!index.isValid())
@@ -100,6 +103,14 @@ TimesheetPage::TimesheetPage(Storage* storage, QWidget* parent) : QWidget(parent
                 const QDate date = m_model->dateForRow(index.row());
                 if (date > QDate::currentDate())  // dia futuro: nada a corrigir
                     return;
+                if (!TimesheetModel::canEditDay(storage, date)) {
+                    infoDialog(this, QStringLiteral("Expediente em andamento"),
+                               QStringLiteral(
+                                   "O dia de hoje ainda está aberto: a Folha só corrige "
+                                   "dias já encerrados. Para ajustar um registro de agora, "
+                                   "use a página Hoje ou encerre o expediente primeiro."));
+                    return;
+                }
                 DayPunchesDialog dialog(storage, date, this);
                 dialog.exec();
                 if (dialog.changed()) {

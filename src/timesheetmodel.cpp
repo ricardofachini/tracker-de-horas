@@ -52,6 +52,16 @@ std::optional<int> TimesheetModel::balanceFor(const DayRecord* day, const QDate&
     return HourBank::dayBalance(*day, AppSettings::journeySeconds());
 }
 
+bool TimesheetModel::canEditDay(const Storage* storage, const QDate& date,
+                                const QDate& today) {
+    if (date > today)
+        return false;  // futuro: nada a corrigir
+    if (date < today)
+        return true;  // dias passados já encerraram, mesmo que faltando a saída
+    const DayRecord* day = storage->find(date);
+    return !day || !day->hasOpenShift();
+}
+
 int TimesheetModel::rowCount(const QModelIndex& parent) const {
     return parent.isValid() ? 0 : m_month.daysInMonth();
 }
@@ -112,6 +122,13 @@ QVariant TimesheetModel::data(const QModelIndex& index, int role) const {
     switch (role) {
     case Qt::DisplayRole:
         return cellText(day, date, column);
+    case Qt::ToolTipRole:
+        if (canEditDay(m_storage, date))
+            return QStringLiteral("Clique duplo para corrigir os registros deste dia");
+        if (date <= QDate::currentDate())  // hoje, com o expediente aberto
+            return QStringLiteral(
+                "Expediente em andamento — ajuste os registros pela página Hoje");
+        return {};
     case Qt::TextAlignmentRole:
         return column == Day ? QVariant(int(Qt::AlignLeft | Qt::AlignVCenter))
                              : QVariant(int(Qt::AlignCenter));

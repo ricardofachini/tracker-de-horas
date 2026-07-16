@@ -114,12 +114,35 @@ bool confirmRemoveDialog(QWidget* parent, const QString& question, const QString
     return dialog.exec() == QDialog::Accepted;
 }
 
+void infoDialog(QWidget* parent, const QString& title, const QString& detail) {
+    QDialog dialog(parent);
+    dialog.setWindowTitle(title);
+    dialog.setModal(true);
+    dialog.setMinimumWidth(360);
+
+    auto* layout = new QVBoxLayout(&dialog);
+    layout->setContentsMargins(24, 22, 24, 22);
+    layout->setSpacing(8);
+    layout->addWidget(makeLabel(title, "h2"));
+    auto* detailLabel = makeLabel(detail, "muted");
+    detailLabel->setWordWrap(true);
+    layout->addWidget(detailLabel);
+    layout->addSpacing(12);
+
+    auto* buttons = new QHBoxLayout;
+    buttons->addStretch();
+    auto* ok = makeDialogButton(QStringLiteral("Entendi"), "primary");
+    ok->setDefault(true);
+    buttons->addWidget(ok);
+    layout->addLayout(buttons);
+
+    QObject::connect(ok, &QPushButton::clicked, &dialog, &QDialog::accept);
+    dialog.exec();
+}
+
 bool resolveOpenShiftDialog(Storage* storage, const QDate& openDay, QWidget* parent) {
     const DayRecord* record = storage->find(openDay);
-    if (!record)
-        return false;
-    const DayRecord::Status status = record->status();
-    if (status != DayRecord::Status::Working && status != DayRecord::Status::OnBreak)
+    if (!record || !record->hasOpenShift())
         return false;
 
     QDialog dialog(parent);

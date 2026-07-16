@@ -32,6 +32,11 @@ DayRecord::Status DayRecord::status() const {
     return Status::Off;
 }
 
+bool DayRecord::hasOpenShift() const {
+    const Status s = status();
+    return s == Status::Working || s == Status::OnBreak;
+}
+
 int DayRecord::workedSeconds(const QTime& now) const {
     int total = 0;
     QTime start;
