@@ -82,8 +82,6 @@ TimesheetPage::TimesheetPage(Storage* storage, QWidget* parent) : QWidget(parent
     footer->addSpacing(18);
     footer->addWidget(makeLabel(QStringLiteral("Saldo do mês:"), "muted"));
     m_balanceLabel = makeLabel({}, "h2");
-    m_balanceLabel->setToolTip(
-        QStringLiteral("Banco de horas do mês: soma dos saldos diários (trabalhadas − meta)"));
     footer->addWidget(m_balanceLabel);
     cardLayout->addLayout(footer);
     root->addWidget(card, 1);
@@ -126,12 +124,23 @@ void TimesheetPage::setMonth(const QDate& firstDay) {
     m_model->setMonth(firstDay);
     m_monthLabel->setText(QLocale().toString(m_model->month(), QStringLiteral("MMMM 'de' yyyy")));
     m_totalLabel->setText(formatDuration(m_model->monthTotalSeconds()));
+
+    // Saldo do mês: trabalhadas − meta mensal. No mês corrente ainda é parcial
+    // (fecha no fim do mês), então marcamos em âmbar em vez de crédito/débito.
+    const QDate today = QDate::currentDate();
+    const bool currentMonth = m_model->month() == QDate(today.year(), today.month(), 1);
     const int balance = m_model->monthBalanceSeconds();
     m_balanceLabel->setText(HourBank::formatBalance(balance));
-    setUiState(m_balanceLabel, "balance", QLatin1String(balanceState(balance)));
+    setUiState(m_balanceLabel, "balance",
+               currentMonth ? QStringLiteral("partial")
+                            : QString::fromLatin1(balanceState(balance)));
+    m_balanceLabel->setToolTip(
+        currentMonth
+            ? QStringLiteral("Mês em andamento — parcial até o fim do mês "
+                             "(trabalhadas − meta mensal)")
+            : QStringLiteral("Banco de horas do mês: trabalhadas − meta mensal"));
 
     // Não faz sentido navegar para meses futuros.
-    const QDate today = QDate::currentDate();
     m_nextButton->setEnabled(m_model->month() < QDate(today.year(), today.month(), 1));
 }
 

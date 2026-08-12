@@ -4,12 +4,13 @@
 
 class Storage;
 class QLabel;
+class QProgressBar;
 class QVBoxLayout;
 
 // Página "Banco de horas": saldo acumulado de crédito/débito em relação à
-// meta diária, com resumo (hoje, semana, mês) e a lista dia a dia agrupada
-// por mês. Dias sem ponto não geram débito; o dia em andamento só entra no
-// saldo quando o expediente é encerrado.
+// meta mensal (contrato por horas no mês), com o mês em andamento à parte e
+// a lista dos meses já fechados. Meses sem ponto não geram débito; o mês
+// atual só entra no saldo acumulado quando termina.
 class BankPage : public QWidget {
 public:
     explicit BankPage(Storage* storage, QWidget* parent = nullptr);
@@ -22,9 +23,8 @@ private:
     QLabel* m_totalValue;
     QLabel* m_totalPill;
     QLabel* m_totalHint;
-    QLabel* m_todayValue;
-    QLabel* m_todayCaption;
-    QLabel* m_weekValue;
-    QLabel* m_monthValue;
+    QLabel* m_currentMonthLabel;
+    QProgressBar* m_monthBar;
+    QLabel* m_monthCaption;
     QVBoxLayout* m_list;
 };

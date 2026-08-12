@@ -3,8 +3,6 @@
 #include <QAbstractTableModel>
 #include <QDate>
 
-#include <optional>
-
 class Storage;
 struct DayRecord;
 
@@ -15,14 +13,14 @@ class TimesheetModel : public QAbstractTableModel {
     Q_OBJECT
 
 public:
-    enum Column { Day, In, Out, Breaks, Worked, Balance, Tasks, ColumnCount };
+    enum Column { Day, In, Out, Breaks, Worked, Tasks, ColumnCount };
 
     explicit TimesheetModel(Storage* storage, QObject* parent = nullptr);
 
     void setMonth(const QDate& firstDay);
     QDate month() const { return m_month; }
     int monthTotalSeconds() const;
-    int monthBalanceSeconds() const;  // saldo do banco de horas no mês
+    int monthBalanceSeconds() const;  // saldo do banco de horas no mês (trabalhadas − meta mensal)
     QDate dateForRow(int row) const;
 
     // A Folha só corrige dias já encerrados: dias passados sempre; o dia
@@ -38,10 +36,6 @@ public:
 
 private:
     QString cellText(const DayRecord* day, const QDate& date, Column column) const;
-
-    // Saldo do dia para a célula: nullopt quando não se aplica (dia sem
-    // ponto, ou hoje com o expediente ainda aberto — fecha ao encerrar).
-    std::optional<int> balanceFor(const DayRecord* day, const QDate& date) const;
 
     Storage* m_storage;
     QDate m_month;  // sempre o dia 1 do mês exibido

@@ -82,10 +82,8 @@ QString monthCsv(const Storage& storage, const QDate& month) {
     const QDate today = QDate::currentDate();
     const QLocale locale;
 
-    QString out = QStringLiteral("Data;Dia;Entrada;Saída;Pausas;Trabalhadas;Saldo;Tarefas\r\n");
-    const int goal = AppSettings::journeySeconds();
+    QString out = QStringLiteral("Data;Dia;Entrada;Saída;Pausas;Trabalhadas;Tarefas\r\n");
     int totalSeconds = 0;
-    int totalBalance = 0;
     for (int i = 0; i < first.daysInMonth(); ++i) {
         const QDate date = first.addDays(i);
         const DayRecord* day = storage.find(date);
@@ -97,16 +95,6 @@ QString monthCsv(const Storage& storage, const QDate& month) {
         const int breaks = day ? day->breakSeconds(now) : 0;
         const int worked = day ? day->workedSeconds(now) : 0;
         totalSeconds += worked;
-
-        // Saldo do banco de horas, com as regras da Folha: só dias com
-        // ponto, e o dia em andamento fecha ao encerrar o expediente.
-        QString balanceField;
-        if (day && HourBank::dayCounts(*day)
-            && !(date == today && day->status() != DayRecord::Status::Done)) {
-            const int balance = HourBank::dayBalance(*day, goal);
-            totalBalance += balance;
-            balanceField = signedDuration(balance);
-        }
 
         QStringList tasks;
         if (day)
@@ -120,14 +108,21 @@ QString monthCsv(const Storage& storage, const QDate& month) {
                << (lastOut.isValid() ? lastOut.toString(QStringLiteral("HH:mm")) : QString())
                << (breaks > 0 ? formatDuration(breaks, true) : QString())
                << (worked > 0 ? formatDuration(worked, true) : QString())
-               << balanceField
                << tasks.join(QStringLiteral(" | "));
         for (QString& field : fields)
             field = csvField(field);
         out += fields.join(QLatin1Char(';')) + QStringLiteral("\r\n");
     }
-    out += QStringLiteral("Total do mês;;;;;%1;%2;\r\n")
-               .arg(formatDuration(totalSeconds, true), signedDuration(totalBalance));
+
+    // Resumo do banco de horas do mês: trabalhadas − meta mensal. No mês
+    // corrente o saldo ainda é parcial (fecha no fim do mês).
+    const int monthlyBalance =
+        HourBank::monthBalance(totalSeconds, AppSettings::monthlyGoalSeconds());
+    const bool currentMonth = first == QDate(today.year(), today.month(), 1);
+    out += QStringLiteral("Total do mês;;;;;%1;\r\n").arg(formatDuration(totalSeconds, true));
+    out += QStringLiteral("Saldo do mês%1;;;;;%2;\r\n")
+               .arg(currentMonth ? QStringLiteral(" (parcial)") : QString(),
+                    signedDuration(monthlyBalance));
     return out;
 }
 

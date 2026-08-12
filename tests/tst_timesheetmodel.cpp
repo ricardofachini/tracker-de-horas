@@ -62,9 +62,9 @@ private slots:
         QCOMPARE(model.headerData(TimesheetModel::In, Qt::Horizontal, Qt::DisplayRole)
                      .toString(),
                  QStringLiteral("Entrada"));
-        QCOMPARE(model.headerData(TimesheetModel::Balance, Qt::Horizontal, Qt::DisplayRole)
+        QCOMPARE(model.headerData(TimesheetModel::Worked, Qt::Horizontal, Qt::DisplayRole)
                      .toString(),
-                 QStringLiteral("Saldo"));
+                 QStringLiteral("Trabalhadas"));
         QCOMPARE(model.headerData(TimesheetModel::Tasks, Qt::Horizontal, Qt::DisplayRole)
                      .toString(),
                  QStringLiteral("Tarefas"));
@@ -85,7 +85,6 @@ private slots:
         QCOMPARE(cell(model, row, TimesheetModel::Out), QStringLiteral("17:00"));
         QCOMPARE(cell(model, row, TimesheetModel::Breaks), QStringLiteral("1h 00min"));
         QCOMPARE(cell(model, row, TimesheetModel::Worked), QStringLiteral("8h 00min"));
-        QCOMPARE(cell(model, row, TimesheetModel::Balance), QStringLiteral("0min"));
         QCOMPARE(cell(model, row, TimesheetModel::Tasks), QStringLiteral("2"));
     }
 
@@ -96,25 +95,25 @@ private slots:
 
         for (TimesheetModel::Column column : {TimesheetModel::In, TimesheetModel::Out,
                                               TimesheetModel::Breaks, TimesheetModel::Worked,
-                                              TimesheetModel::Balance, TimesheetModel::Tasks})
+                                              TimesheetModel::Tasks})
             QCOMPARE(cell(model, 0, column), QStringLiteral("—"));
     }
 
-    void balanceShowsCreditAndDebit() {
+    void monthBalanceUsesMonthlyGoal() {
         Storage storage;
-        // 10h trabalhadas → +2h; 6h trabalhadas → −2h.
+        // 10h + 6h trabalhadas no mês = 16h.
         storage.day(QDate(2026, 6, 8)).punches = {{PunchType::In, QTime(8, 0)},
                                                   {PunchType::Out, QTime(18, 0)}};
         storage.day(QDate(2026, 6, 9)).punches = {{PunchType::In, QTime(8, 0)},
                                                   {PunchType::Out, QTime(14, 0)}};
+        AppSettings::setMonthlyGoalSeconds(10 * 3600);  // meta pequena p/ o teste
 
         TimesheetModel model(&storage);
         model.setMonth(QDate(2026, 6, 1));
 
-        QCOMPARE(cell(model, 7, TimesheetModel::Balance), QStringLiteral("+2h 00min"));
-        QCOMPARE(cell(model, 8, TimesheetModel::Balance), QStringLiteral("−2h 00min"));
-        QCOMPARE(model.monthBalanceSeconds(), 0);
         QCOMPARE(model.monthTotalSeconds(), 16 * 3600);
+        // Saldo do mês = trabalhadas − meta mensal = 16h − 10h = +6h.
+        QCOMPARE(model.monthBalanceSeconds(), 6 * 3600);
     }
 
     void canEditOnlyClosedDays() {
@@ -155,7 +154,6 @@ private slots:
 
         QCOMPARE(cell(model, 11, TimesheetModel::Tasks), QStringLiteral("1"));
         QCOMPARE(cell(model, 11, TimesheetModel::Worked), QStringLiteral("—"));
-        QCOMPARE(cell(model, 11, TimesheetModel::Balance), QStringLiteral("—"));
     }
 
 private:

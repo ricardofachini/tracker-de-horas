@@ -7,20 +7,24 @@
 
 #include <QHBoxLayout>
 #include <QLocale>
+#include <QMap>
 #include <QPainter>
+#include <QProgressBar>
 #include <QScrollArea>
 #include <QVBoxLayout>
+
+#include <algorithm>
+#include <functional>
 
 namespace {
 
 // Barra divergente do saldo: cresce do zero central para a direita (verde,
 // crédito) ou para a esquerda (vermelha, débito). Todas as barras da lista
-// compartilham a mesma escala, então o comprimento é comparável entre dias.
+// compartilham a mesma escala, então o comprimento é comparável entre meses.
 class BalanceBar : public QWidget {
 public:
-    BalanceBar(int balanceSeconds, int scaleSeconds, bool partial, QWidget* parent = nullptr)
-        : QWidget(parent), m_balance(balanceSeconds),
-          m_scale(qMax(scaleSeconds, 1)), m_partial(partial) {
+    BalanceBar(int balanceSeconds, int scaleSeconds, QWidget* parent = nullptr)
+        : QWidget(parent), m_balance(balanceSeconds), m_scale(qMax(scaleSeconds, 1)) {
         setFixedSize(150, 14);
     }
 
@@ -40,9 +44,7 @@ protected:
         const qreal half = mid - 1;
         const qreal length = qMin(half, half * qAbs(m_balance) / qreal(m_scale));
         if (length >= 1.0) {
-            painter.setBrush(m_partial ? Theme::warnText()
-                             : m_balance > 0 ? Theme::successText()
-                                             : Theme::dangerText());
+            painter.setBrush(m_balance > 0 ? Theme::successText() : Theme::dangerText());
             painter.drawRoundedRect(m_balance > 0 ? QRectF(mid, trackY, length, 6)
                                                   : QRectF(mid - length, trackY, length, 6),
                                     3, 3);
@@ -56,7 +58,6 @@ protected:
 private:
     int m_balance;
     int m_scale;
-    bool m_partial;
 };
 
 }  // namespace
@@ -93,30 +94,28 @@ BankPage::BankPage(Storage* storage, QWidget* parent)
     root->addWidget(heroCard);
     root->addSpacing(14);
 
-    // Resumo em três cartões, como na página Relatórios.
-    auto makeTile = [](const QString& caption, QLabel*& valueOut, QLabel*& captionOut) {
-        auto* tile = makeCard();
-        auto* layout = new QVBoxLayout(tile);
-        layout->setContentsMargins(20, 18, 20, 18);
-        layout->setSpacing(4);
-        valueOut = new QLabel(QStringLiteral("—"));
-        valueOut->setObjectName("statValue");
-        layout->addWidget(valueOut);
-        captionOut = makeLabel(caption, "muted");
-        layout->addWidget(captionOut);
-        return tile;
-    };
-    QLabel* weekCaption;
-    QLabel* monthCaption;
-    auto* tiles = new QHBoxLayout;
-    tiles->setSpacing(14);
-    tiles->addWidget(makeTile(QStringLiteral("hoje"), m_todayValue, m_todayCaption));
-    tiles->addWidget(makeTile(QStringLiteral("esta semana"), m_weekValue, weekCaption));
-    tiles->addWidget(makeTile(QStringLiteral("este mês"), m_monthValue, monthCaption));
-    root->addLayout(tiles);
+    // Cartão do mês em andamento: progresso rumo à meta mensal.
+    auto* currentCard = makeCard();
+    auto* current = new QVBoxLayout(currentCard);
+    current->setContentsMargins(24, 20, 24, 20);
+    current->setSpacing(6);
+    current->addWidget(makeLabel(QStringLiteral("Mês atual"), "muted"));
+    m_currentMonthLabel = makeLabel({}, "h2");
+    current->addWidget(m_currentMonthLabel);
+    m_monthBar = new QProgressBar;
+    m_monthBar->setObjectName("journeyBar");  // reaproveita o estilo da barra da página Hoje
+    m_monthBar->setRange(0, AppSettings::monthlyGoalSeconds());
+    m_monthBar->setValue(0);
+    m_monthBar->setTextVisible(false);
+    m_monthBar->setFixedHeight(6);
+    m_monthBar->setProperty("complete", QStringLiteral("false"));
+    current->addWidget(m_monthBar);
+    m_monthCaption = makeLabel({}, "muted");
+    current->addWidget(m_monthCaption);
+    root->addWidget(currentCard);
     root->addSpacing(14);
 
-    // Lista dia a dia, agrupada por mês (cabeçalho com o saldo do mês).
+    // Lista dos meses já fechados (mais recente primeiro).
     auto* scroll = new QScrollArea;
     scroll->setWidgetResizable(true);
     scroll->setFrameShape(QFrame::NoFrame);
@@ -130,8 +129,8 @@ BankPage::BankPage(Storage* storage, QWidget* parent)
 
     root->addSpacing(8);
     auto* note = makeLabel(
-        QStringLiteral("Dias sem ponto não geram débito · o dia em andamento entra no saldo "
-                       "ao encerrar o expediente · a meta é configurável em Relatórios."),
+        QStringLiteral("Meses sem registro não geram débito · o mês atual entra no saldo quando "
+                       "termina · a meta mensal é configurável em Relatórios."),
         "muted");
     note->setWordWrap(true);
     root->addWidget(note);
@@ -140,57 +139,40 @@ BankPage::BankPage(Storage* storage, QWidget* parent)
 }
 
 void BankPage::refresh() {
-    const int goal = AppSettings::journeySeconds();
+    const int goal = AppSettings::monthlyGoalSeconds();
     const QDate today = QDate::currentDate();
     const QTime now = QTime::currentTime();
-    const QDate weekStart = today.addDays(-(today.dayOfWeek() - 1));  // segunda-feira
+    const QDate currentMonth(today.year(), today.month(), 1);
 
     m_subtitle->setText(
-        QStringLiteral("Horas a mais (crédito) ou a menos (débito) que a meta diária de %1")
+        QStringLiteral("Horas a mais (crédito) ou a menos (débito) que a meta mensal de %1")
             .arg(formatDurationCompact(goal)));
 
-    // Uma única varredura alimenta o saldo total, os cartões e a lista.
-    struct Row {
-        QDate date;
-        int worked;
-        int balance;
-        bool open;  // expediente de hoje ainda em andamento
-    };
-    QList<Row> rows;
-    QMap<QDate, int> monthSum;    // saldo fechado por mês (chave: dia 1)
-    QMap<QDate, int> monthDays;   // quantos dias fechados o mês tem
-    int total = 0, weekTotal = 0, monthTotal = 0, countedDays = 0;
-    int todayBalance = 0;
-    bool todayCounts = false, todayOpen = false;
-    int maxAbs = 3600;  // escala mínima de 1h para as barrinhas
-
+    // Uma única varredura agrega as horas trabalhadas por mês (chave: dia 1).
+    QMap<QDate, int> monthWorked;
+    QMap<QDate, bool> monthHasPunch;
     for (const DayRecord& day : m_storage->allDays()) {
-        if (!HourBank::dayCounts(day))
-            continue;
-        const bool isToday = day.date == today;
-        const bool open = isToday && day.status() != DayRecord::Status::Done;
-        const QTime closeAt = open ? now : QTime();
-        const int worked = day.workedSeconds(closeAt);
-        const int balance = HourBank::dayBalance(day, goal, closeAt);
-        rows.append({day.date, worked, balance, open});
-        maxAbs = qMax(maxAbs, qAbs(balance));
-        if (isToday) {
-            todayCounts = true;
-            todayOpen = open;
-            todayBalance = balance;
-        }
-        if (open)
-            continue;  // o dia em andamento ainda não entra nos saldos
-        const QDate monthKey(day.date.year(), day.date.month(), 1);
-        monthSum[monthKey] += balance;
-        ++monthDays[monthKey];
-        total += balance;
-        ++countedDays;
-        if (day.date >= weekStart && day.date <= today)
-            weekTotal += balance;
-        if (day.date.year() == today.year() && day.date.month() == today.month())
-            monthTotal += balance;
+        const QTime closeAt = day.date == today ? now : QTime();
+        const QDate key(day.date.year(), day.date.month(), 1);
+        monthWorked[key] += day.workedSeconds(closeAt);
+        if (HourBank::dayCounts(day))
+            monthHasPunch[key] = true;
     }
+
+    // Meses fechados (com atividade e diferentes do mês atual), do mais recente
+    // ao mais antigo, alimentam o saldo acumulado e a lista.
+    QList<QDate> closedMonths;
+    int total = 0, maxAbs = 3600;  // escala mínima de 1h para as barrinhas
+    for (auto it = monthHasPunch.constBegin(); it != monthHasPunch.constEnd(); ++it) {
+        if (it.key() == currentMonth)
+            continue;
+        closedMonths.append(it.key());
+        const int balance = HourBank::monthBalance(monthWorked.value(it.key()), goal);
+        total += balance;
+        maxAbs = qMax(maxAbs, qAbs(balance));
+    }
+    std::sort(closedMonths.begin(), closedMonths.end(), std::greater<QDate>());
+    const int closedCount = closedMonths.size();
 
     // Cartão principal.
     m_totalValue->setText(HourBank::formatBalance(total));
@@ -199,73 +181,50 @@ void BankPage::refresh() {
                          : total < 0 ? QStringLiteral("débito")
                                      : QStringLiteral("zerado"));
     setUiState(m_totalPill, "balance", balanceState(total));
-    m_totalPill->setVisible(countedDays > 0);
-    if (todayOpen)
-        m_totalHint->setText(QStringLiteral(
-            "O dia de hoje está em andamento e entra no saldo quando você encerrar o expediente."));
-    else if (countedDays > 0)
-        m_totalHint->setText(countedDays == 1
-                                 ? QStringLiteral("Somando o único dia com ponto registrado.")
-                                 : QStringLiteral("Somando os %1 dias com ponto registrado.")
-                                       .arg(countedDays));
+    m_totalPill->setVisible(closedCount > 0);
+    if (closedCount > 0)
+        m_totalHint->setText(closedCount == 1
+                                 ? QStringLiteral("Somando o único mês já fechado.")
+                                 : QStringLiteral("Somando os %1 meses já fechados.")
+                                       .arg(closedCount));
     else
         m_totalHint->setText(QStringLiteral(
-            "Nenhum dia registrado ainda — o saldo começa a contar no primeiro ponto."));
+            "Nenhum mês fechado ainda — o saldo começa a contar quando o mês atual terminar."));
 
-    // Cartões de resumo.
-    auto setTile = [](QLabel* value, int balance, const char* state) {
-        value->setText(HourBank::formatBalance(balance));
-        setUiState(value, "balance", state);
-    };
-    if (!todayCounts) {
-        m_todayValue->setText(QStringLiteral("—"));
-        setUiState(m_todayValue, "balance", "zero");
-        m_todayCaption->setText(QStringLiteral("hoje"));
-    } else {
-        setTile(m_todayValue, todayBalance,
-                todayOpen ? "partial" : balanceState(todayBalance));
-        m_todayCaption->setText(todayOpen ? QStringLiteral("hoje · em andamento")
-                                          : QStringLiteral("hoje"));
-    }
-    setTile(m_weekValue, weekTotal, balanceState(weekTotal));
-    setTile(m_monthValue, monthTotal, balanceState(monthTotal));
+    // Cartão do mês em andamento.
+    const QLocale locale;
+    const int currentWorked = monthWorked.value(currentMonth);
+    m_currentMonthLabel->setText(locale.toString(currentMonth, QStringLiteral("MMMM 'de' yyyy")));
+    if (m_monthBar->maximum() != goal)
+        m_monthBar->setRange(0, goal);
+    m_monthBar->setValue(qMin(currentWorked, goal));
+    const bool complete = currentWorked >= goal;
+    setUiState(m_monthBar, "complete", complete ? QStringLiteral("true") : QStringLiteral("false"));
+    if (complete)
+        m_monthCaption->setText(QStringLiteral("meta de %1 atingida ✓ · +%2 de crédito")
+                                    .arg(formatDurationCompact(goal),
+                                         formatDurationCompact(currentWorked - goal)));
+    else
+        m_monthCaption->setText(QStringLiteral("%1 de %2 · faltam %3 para a meta do mês")
+                                    .arg(formatDurationCompact(currentWorked),
+                                         formatDurationCompact(goal),
+                                         formatDurationCompact(goal - currentWorked)));
 
-    // Lista dia a dia.
+    // Lista dos meses fechados.
     while (m_list->count() > 1) {  // preserva o stretch final
         QLayoutItem* item = m_list->takeAt(0);
         delete item->widget();
         delete item;
     }
 
-    if (rows.isEmpty()) {
-        m_list->insertWidget(0, makeLabel(QStringLiteral("Nenhum dia registrado ainda."), "muted"));
+    if (closedMonths.isEmpty()) {
+        m_list->insertWidget(0, makeLabel(QStringLiteral("Nenhum mês fechado ainda."), "muted"));
         return;
     }
 
-    const QLocale locale;
-    QDate currentMonth;
-    for (const Row& row : rows) {
-        const QDate monthKey(row.date.year(), row.date.month(), 1);
-        if (monthKey != currentMonth) {
-            currentMonth = monthKey;
-            auto* header = new QWidget;
-            auto* headerLayout = new QHBoxLayout(header);
-            // respiro extra antes dos meses seguintes (o 1º cola no topo)
-            headerLayout->setContentsMargins(4, m_list->count() > 1 ? 10 : 0, 4, 0);
-            headerLayout->setSpacing(10);
-            headerLayout->addWidget(
-                makeLabel(locale.toString(monthKey, QStringLiteral("MMMM 'de' yyyy")), "h2"));
-            headerLayout->addStretch();
-            if (monthDays.contains(monthKey)) {
-                headerLayout->addWidget(makeLabel(QStringLiteral("saldo do mês"), "muted"),
-                                        0, Qt::AlignVCenter);
-                headerLayout->addWidget(makeBalancePill(monthSum[monthKey]), 0, Qt::AlignVCenter);
-            } else {
-                headerLayout->addWidget(makeLabel(QStringLiteral("em andamento"), "muted"),
-                                        0, Qt::AlignVCenter);
-            }
-            m_list->insertWidget(m_list->count() - 1, header);
-        }
+    for (const QDate& month : closedMonths) {
+        const int worked = monthWorked.value(month);
+        const int balance = HourBank::monthBalance(worked, goal);
 
         auto* card = makeCard();
         auto* rowLayout = new QHBoxLayout(card);
@@ -274,24 +233,18 @@ void BankPage::refresh() {
 
         auto* texts = new QVBoxLayout;
         texts->setSpacing(2);
-        QString dateText =
-            locale.toString(row.date, QStringLiteral("dddd, d 'de' MMMM"));
-        if (row.date == today)
-            dateText = QStringLiteral("Hoje · ") + dateText;
-        texts->addWidget(makeLabel(dateText, "h2"));
-        texts->addWidget(makeLabel(QStringLiteral("%1 trabalhadas · meta de %2")
-                                       .arg(formatDuration(row.worked),
+        texts->addWidget(
+            makeLabel(locale.toString(month, QStringLiteral("MMMM 'de' yyyy")), "h2"));
+        texts->addWidget(makeLabel(QStringLiteral("%1 de %2")
+                                       .arg(formatDurationCompact(worked),
                                             formatDurationCompact(goal)),
                                    "muted"));
         rowLayout->addLayout(texts);
         rowLayout->addStretch();
 
-        rowLayout->addWidget(new BalanceBar(row.balance, maxAbs, row.open), 0, Qt::AlignVCenter);
-        auto* pill = makeBalancePill(row.balance, row.open);
-        pill->setToolTip(row.open
-                             ? QStringLiteral("Saldo parcial — o dia entra no banco "
-                                              "quando o expediente é encerrado.")
-                             : QStringLiteral("Saldo do dia: trabalhadas − meta."));
+        rowLayout->addWidget(new BalanceBar(balance, maxAbs), 0, Qt::AlignVCenter);
+        auto* pill = makeBalancePill(balance);
+        pill->setToolTip(QStringLiteral("Saldo do mês: trabalhadas − meta mensal."));
         rowLayout->addWidget(pill, 0, Qt::AlignVCenter);
 
         m_list->insertWidget(m_list->count() - 1, card);

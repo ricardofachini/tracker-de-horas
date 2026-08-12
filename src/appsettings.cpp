@@ -14,6 +14,11 @@ int clampJourney(int seconds) {
                   AppSettings::kMaxJourneySeconds);
 }
 
+int clampMonthly(int seconds) {
+    return qBound(AppSettings::kMinMonthlyGoalSeconds, seconds,
+                  AppSettings::kMaxMonthlyGoalSeconds);
+}
+
 }  // namespace
 
 namespace AppSettings {
@@ -28,6 +33,19 @@ int journeySeconds() {
 
 void setJourneySeconds(int seconds) {
     settings().setValue(QStringLiteral("journeySeconds"), clampJourney(seconds));
+}
+
+int monthlyGoalSeconds() {
+    bool ok = false;
+    const int stored =
+        settings()
+            .value(QStringLiteral("monthlyGoalSeconds"), kDefaultMonthlyGoalSeconds)
+            .toInt(&ok);
+    return ok ? clampMonthly(stored) : kDefaultMonthlyGoalSeconds;
+}
+
+void setMonthlyGoalSeconds(int seconds) {
+    settings().setValue(QStringLiteral("monthlyGoalSeconds"), clampMonthly(seconds));
 }
 
 }  // namespace AppSettings

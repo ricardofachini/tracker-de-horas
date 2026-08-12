@@ -9,6 +9,7 @@
 #include <QLocale>
 #include <QPushButton>
 #include <QScrollArea>
+#include <QSpinBox>
 #include <QTimeEdit>
 #include <QVBoxLayout>
 
@@ -45,7 +46,6 @@ void HistoryPage::refresh() {
     }
 
     const QDate today = QDate::currentDate();
-    const int goal = AppSettings::journeySeconds();
     bool empty = true;
     for (const DayRecord& day : m_storage->allDays()) {
         if (day.punches.isEmpty() && day.tasks.isEmpty())
@@ -71,20 +71,6 @@ void HistoryPage::refresh() {
                                   "muted"));
         rowLayout->addLayout(left);
         rowLayout->addStretch();
-
-        // Saldo do dia no banco de horas (dias sem ponto não têm saldo).
-        if (HourBank::dayCounts(day)) {
-            const bool open = day.date == today && day.status() != DayRecord::Status::Done;
-            const int balance =
-                HourBank::dayBalance(day, goal, open ? QTime::currentTime() : QTime());
-            auto* pill = makeBalancePill(balance, open);
-            pill->setToolTip(open ? QStringLiteral("Saldo parcial — o dia entra no banco "
-                                                   "quando o expediente é encerrado.")
-                                  : QStringLiteral("Saldo do dia no banco de horas "
-                                                   "(trabalhadas − meta)."));
-            rowLayout->addWidget(pill, 0, Qt::AlignVCenter);
-            rowLayout->addSpacing(16);
-        }
 
         auto* right = new QVBoxLayout;
         right->setSpacing(2);
@@ -177,8 +163,8 @@ ReportsPage::ReportsPage(Storage* storage, QWidget* parent)
     goalTexts->setSpacing(2);
     goalTexts->addWidget(makeLabel(QStringLiteral("Meta de jornada diária"), "h2"));
     goalTexts->addWidget(makeLabel(
-        QStringLiteral("Usada na barra da página Hoje, na linha de meta do gráfico "
-                       "e no cálculo do banco de horas."),
+        QStringLiteral("Usada na barra da página Hoje e na linha de meta do gráfico "
+                       "de horas por semana."),
         "muted"));
     goalLayout->addLayout(goalTexts);
     goalLayout->addStretch();
@@ -193,6 +179,35 @@ ReportsPage::ReportsPage(Storage* storage, QWidget* parent)
     });
     goalLayout->addWidget(goalEdit);
     root->addWidget(goalCard);
+    root->addSpacing(14);
+
+    // Meta de horas mensais: base do banco de horas e do "Saldo do mês" da
+    // Folha (o contrato é por horas no mês).
+    auto* monthlyCard = makeCard();
+    auto* monthlyLayout = new QHBoxLayout(monthlyCard);
+    monthlyLayout->setContentsMargins(20, 18, 20, 18);
+    monthlyLayout->setSpacing(14);
+    auto* monthlyTexts = new QVBoxLayout;
+    monthlyTexts->setSpacing(2);
+    monthlyTexts->addWidget(makeLabel(QStringLiteral("Meta de horas mensais"), "h2"));
+    monthlyTexts->addWidget(makeLabel(
+        QStringLiteral("Usada no banco de horas e no \"Saldo do mês\" da Folha — "
+                       "seu contrato por horas no mês."),
+        "muted"));
+    monthlyLayout->addLayout(monthlyTexts);
+    monthlyLayout->addStretch();
+    auto* monthlyEdit = new QSpinBox;
+    monthlyEdit->setRange(AppSettings::kMinMonthlyGoalSeconds / 3600,
+                          AppSettings::kMaxMonthlyGoalSeconds / 3600);
+    monthlyEdit->setSuffix(QStringLiteral(" h"));
+    monthlyEdit->setValue(AppSettings::monthlyGoalSeconds() / 3600);
+    monthlyEdit->setButtonSymbols(QAbstractSpinBox::NoButtons);
+    monthlyEdit->setToolTip(
+        QStringLiteral("Digite a meta mensal ou ajuste com as setas do teclado"));
+    connect(monthlyEdit, QOverload<int>::of(&QSpinBox::valueChanged), this,
+            [](int hours) { AppSettings::setMonthlyGoalSeconds(hours * 3600); });
+    monthlyLayout->addWidget(monthlyEdit);
+    root->addWidget(monthlyCard);
 
     const QDate today = QDate::currentDate();
     m_weekStart = today.addDays(-(today.dayOfWeek() - 1));  // segunda-feira

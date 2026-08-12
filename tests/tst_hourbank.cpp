@@ -2,11 +2,11 @@
 
 #include <QtTest>
 
-// Testes do banco de horas: quais dias contam, o saldo diário e o formato.
+// Testes do banco de horas: quais dias contam, o saldo mensal e o formato.
 class TestHourBank : public QObject {
     Q_OBJECT
 
-    static constexpr int kGoal = 8 * 3600;
+    static constexpr int kMonthlyGoal = 176 * 3600;
 
     static DayRecord dayWith(std::initializer_list<Punch> punches) {
         DayRecord day;
@@ -30,31 +30,19 @@ private slots:
         QVERIFY(HourBank::dayCounts(dayWith({{PunchType::In, QTime(9, 0)}})));
     }
 
-    void debitWhenUnderGoal() {
-        const DayRecord day = dayWith({{PunchType::In, QTime(9, 0)},
-                                       {PunchType::Out, QTime(15, 0)}});  // 6h
-        QCOMPARE(HourBank::dayBalance(day, kGoal), -2 * 3600);
+    void debitWhenUnderMonthlyGoal() {
+        // 170h trabalhadas no mês contra meta de 176h → −6h.
+        QCOMPARE(HourBank::monthBalance(170 * 3600, kMonthlyGoal), -6 * 3600);
     }
 
-    void creditWhenOverGoal() {
-        const DayRecord day = dayWith({{PunchType::In, QTime(8, 0)},
-                                       {PunchType::BreakStart, QTime(12, 0)},
-                                       {PunchType::BreakEnd, QTime(13, 0)},
-                                       {PunchType::Out, QTime(18, 30)}});  // 9h30
-        QCOMPARE(HourBank::dayBalance(day, kGoal), 90 * 60);
+    void creditWhenOverMonthlyGoal() {
+        // 182h30 trabalhadas → +6h30.
+        QCOMPARE(HourBank::monthBalance(182 * 3600 + 30 * 60, kMonthlyGoal),
+                 6 * 3600 + 30 * 60);
     }
 
-    void exactGoalIsZero() {
-        const DayRecord day = dayWith({{PunchType::In, QTime(8, 0)},
-                                       {PunchType::Out, QTime(16, 0)}});
-        QCOMPARE(HourBank::dayBalance(day, kGoal), 0);
-    }
-
-    void openShiftUsesNow() {
-        const DayRecord day = dayWith({{PunchType::In, QTime(9, 0)}});
-        QCOMPARE(HourBank::dayBalance(day, kGoal, QTime(12, 0)), -5 * 3600);
-        // Sem `now`, o intervalo aberto é ignorado: o dia inteiro fica em débito.
-        QCOMPARE(HourBank::dayBalance(day, kGoal), -kGoal);
+    void exactMonthlyGoalIsZero() {
+        QCOMPARE(HourBank::monthBalance(kMonthlyGoal, kMonthlyGoal), 0);
     }
 
     void formatShowsSign() {

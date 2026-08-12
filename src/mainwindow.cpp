@@ -112,7 +112,7 @@ MainWindow::MainWindow() {
     sideLayout->addWidget(m_themeButton);
     sideLayout->addSpacing(6);
 
-    auto* footer = new QLabel(QStringLiteral("v0.1 · dados salvos localmente"));
+    auto* footer = new QLabel(QStringLiteral("v1.1 · dados salvos localmente"));
     footer->setObjectName("appSubtitle");
     footer->setWordWrap(true);
     sideLayout->addWidget(footer);

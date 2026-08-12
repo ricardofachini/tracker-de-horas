@@ -6,8 +6,8 @@ bool dayCounts(const DayRecord& day) {
     return !day.punches.isEmpty();
 }
 
-int dayBalance(const DayRecord& day, int goalSeconds, const QTime& now) {
-    return day.workedSeconds(now) - goalSeconds;
+int monthBalance(int workedSeconds, int monthlyGoalSeconds) {
+    return workedSeconds - monthlyGoalSeconds;
 }
 
 QString formatBalance(int seconds) {

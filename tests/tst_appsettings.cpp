@@ -53,6 +53,28 @@ private slots:
         QCOMPARE(AppSettings::journeySeconds(), AppSettings::kDefaultJourneySeconds);
     }
 
+    void monthlyDefaultsTo176Hours() {
+        QCOMPARE(AppSettings::monthlyGoalSeconds(), 176 * 3600);
+    }
+
+    void monthlySetAndGetRoundTrip() {
+        AppSettings::setMonthlyGoalSeconds(160 * 3600);
+        QCOMPARE(AppSettings::monthlyGoalSeconds(), 160 * 3600);
+
+        AppSettings::setMonthlyGoalSeconds(180 * 3600);
+        QCOMPARE(AppSettings::monthlyGoalSeconds(), 180 * 3600);
+    }
+
+    void monthlyClampsBelowMinimum() {
+        AppSettings::setMonthlyGoalSeconds(60);
+        QCOMPARE(AppSettings::monthlyGoalSeconds(), AppSettings::kMinMonthlyGoalSeconds);
+    }
+
+    void monthlyClampsAboveMaximum() {
+        AppSettings::setMonthlyGoalSeconds(1000 * 3600);
+        QCOMPARE(AppSettings::monthlyGoalSeconds(), AppSettings::kMaxMonthlyGoalSeconds);
+    }
+
 private:
     QTemporaryDir m_dir;
 };

@@ -35,21 +35,7 @@ int TimesheetModel::monthTotalSeconds() const {
 }
 
 int TimesheetModel::monthBalanceSeconds() const {
-    int total = 0;
-    for (int row = 0; row < rowCount(); ++row) {
-        const QDate date = dateForRow(row);
-        if (const auto balance = balanceFor(m_storage->find(date), date))
-            total += *balance;
-    }
-    return total;
-}
-
-std::optional<int> TimesheetModel::balanceFor(const DayRecord* day, const QDate& date) const {
-    if (!day || !HourBank::dayCounts(*day))
-        return std::nullopt;
-    if (date == QDate::currentDate() && day->status() != DayRecord::Status::Done)
-        return std::nullopt;  // o dia em andamento fecha ao encerrar o expediente
-    return HourBank::dayBalance(*day, AppSettings::journeySeconds());
+    return HourBank::monthBalance(monthTotalSeconds(), AppSettings::monthlyGoalSeconds());
 }
 
 bool TimesheetModel::canEditDay(const Storage* storage, const QDate& date,
@@ -100,10 +86,6 @@ QString TimesheetModel::cellText(const DayRecord* day, const QDate& date, Column
         const int secs = day ? day->workedSeconds(now) : 0;
         return secs > 0 ? formatDuration(secs) : empty;
     }
-    case Balance: {
-        const auto balance = balanceFor(day, date);
-        return balance ? HourBank::formatBalance(*balance) : empty;
-    }
     case Tasks:
         return day && !day->tasks.isEmpty() ? QString::number(day->tasks.size()) : empty;
     case ColumnCount:
@@ -144,11 +126,6 @@ QVariant TimesheetModel::data(const QModelIndex& index, int role) const {
             return Theme::todayHighlight();  // faixa azulada no dia atual
         return {};
     case Qt::ForegroundRole:
-        // Saldo colorido: verde crédito, vermelho débito (zero segue a regra geral).
-        if (column == Balance) {
-            if (const auto balance = balanceFor(day, date); balance && *balance != 0)
-                return *balance > 0 ? Theme::successText() : Theme::dangerText();
-        }
         if (date.dayOfWeek() >= 6)  // fim de semana esmaecido
             return Theme::weekendText();
         if (cellText(day, date, column) == QStringLiteral("—"))
@@ -168,13 +145,10 @@ QVariant TimesheetModel::headerData(int section, Qt::Orientation orientation, in
         case Out: return QStringLiteral("Saída");
         case Breaks: return QStringLiteral("Pausas");
         case Worked: return QStringLiteral("Trabalhadas");
-        case Balance: return QStringLiteral("Saldo");
         case Tasks: return QStringLiteral("Tarefas");
         case ColumnCount: break;
         }
     }
-    if (role == Qt::ToolTipRole && Column(section) == Balance)
-        return QStringLiteral("Banco de horas: horas a mais (+) ou a menos (−) que a meta diária");
     if (role == Qt::TextAlignmentRole)
         return section == Day ? QVariant(int(Qt::AlignLeft | Qt::AlignVCenter))
                               : QVariant(int(Qt::AlignCenter));
