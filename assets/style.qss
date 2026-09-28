@@ -2,7 +2,7 @@
    As cores reais são injetadas por theme.cpp conforme o modo claro/escuro. */
 
 * {
-    font-family: "Cantarell", "Adwaita Sans", "Ubuntu", "Noto Sans", sans-serif;
+    font-family: "Cantarell", "Adwaita Sans", "Ubuntu", "Noto Sans", "Helvetica Neue", sans-serif;
     font-size: 14px;
     color: @text;
     outline: none;

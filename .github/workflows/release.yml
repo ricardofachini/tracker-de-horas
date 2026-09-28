@@ -46,3 +46,40 @@ jobs:
           gh release create "$GITHUB_REF_NAME" build/tracker-horas_*.deb \
             --title "Tracker Horas $GITHUB_REF_NAME" \
             --generate-notes
+
+  # Anexa um .dmg (binário universal: Apple Silicon + Intel) à mesma release.
+  macos:
+    needs: release
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Instalar Qt
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: "6.8.*"
+          cache: true
+
+      - name: Compilar
+        run: |
+          cmake -S . -B build -DCMAKE_BUILD_TYPE=Release \
+                -DCMAKE_OSX_ARCHITECTURES="arm64;x86_64" \
+                -DCMAKE_OSX_DEPLOYMENT_TARGET=12.0
+          cmake --build build -j"$(sysctl -n hw.ncpu)"
+
+      - name: Testes
+        run: ctest --test-dir build --output-on-failure
+
+      - name: Gerar .dmg
+        run: |
+          cd build
+          macdeployqt TrackerHoras.app
+          # assinatura ad-hoc: sem ela o app nem abre no Apple Silicon
+          codesign --force --deep --sign - TrackerHoras.app
+          hdiutil create -volname "Tracker Horas" -srcfolder TrackerHoras.app \
+                  -ov -format UDZO "TrackerHoras-${GITHUB_REF_NAME#v}-macos.dmg"
+
+      - name: Anexar à release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload "$GITHUB_REF_NAME" build/TrackerHoras-*.dmg

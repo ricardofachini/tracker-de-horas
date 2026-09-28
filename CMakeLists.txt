@@ -38,9 +38,25 @@ qt_add_resources(tracker-horas "assets"
 
 target_link_libraries(tracker-horas PRIVATE Qt6::Widgets)
 
+# macOS: gera TrackerHoras.app (empacotado em .dmg pelo macdeployqt no CI)
+if(APPLE)
+    set_target_properties(tracker-horas PROPERTIES OUTPUT_NAME "TrackerHoras")
+endif()
+set_target_properties(tracker-horas PROPERTIES
+    MACOSX_BUNDLE TRUE
+    MACOSX_BUNDLE_BUNDLE_NAME "Tracker Horas"
+    MACOSX_BUNDLE_GUI_IDENTIFIER "io.github.ricardofachini.tracker-horas"
+    MACOSX_BUNDLE_BUNDLE_VERSION ${PROJECT_VERSION}
+    MACOSX_BUNDLE_SHORT_VERSION_STRING ${PROJECT_VERSION}
+)
+
 # --------------------------------------------- Instalação e pacote .deb
 
 include(GNUInstallDirs)
+
+if(APPLE)
+    install(TARGETS tracker-horas BUNDLE DESTINATION .)
+else()
 
 install(TARGETS tracker-horas RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
 install(FILES packaging/tracker-horas.desktop
@@ -60,6 +76,7 @@ set(CPACK_DEBIAN_PACKAGE_SECTION "utils")
 set(CPACK_DEBIAN_PACKAGE_SHLIBDEPS ON)
 set(CPACK_STRIP_FILES ON)
 include(CPack)
+endif()
 
 # ------------------------------------------------------- Testes (ctest)
 

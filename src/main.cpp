@@ -7,9 +7,11 @@
 #include <QStyleFactory>
 
 int main(int argc, char* argv[]) {
+#ifdef Q_OS_LINUX
     // Wayland nativo, com fallback para X11 se não houver compositor.
     if (!qEnvironmentVariableIsSet("QT_QPA_PLATFORM"))
         qputenv("QT_QPA_PLATFORM", "wayland;xcb");
+#endif
 
     QApplication app(argc, argv);
     app.setApplicationName(QStringLiteral("tracker-horas"));
