@@ -1,7 +1,8 @@
 # Tracker Horas
 
-App desktop Linux (Wayland nativo) de controle de ponto e tarefas diárias,
-escrito em C++20 com Qt 6 Widgets e visual inspirado no Adwaita/GNOME.
+App desktop para Linux (Wayland nativo) e macOS de controle de ponto e
+tarefas diárias, escrito em C++20 com Qt 6 Widgets e visual inspirado no
+Adwaita/GNOME.
 
 ## Funcionalidades
 
@@ -55,7 +56,8 @@ escrito em C++20 com Qt 6 Widgets e visual inspirado no Adwaita/GNOME.
   fechado (ou o PC suspenso), ao abrir ele pergunta se você seguiu
   trabalhando, até que horas foi, ou se prefere corrigir os registros.
 
-Os dados são salvos em JSON em `~/.local/share/tracker-horas/data.json`.
+Os dados são salvos em JSON em `~/.local/share/tracker-horas/data.json`
+(Linux) ou `~/Library/Application Support/tracker-horas/data.json` (macOS).
 
 ## Compilar e executar
 
@@ -67,8 +69,25 @@ cmake --build build -j$(nproc)
 ./build/tracker-horas
 ```
 
-O app roda nativamente em Wayland (`QT_QPA_PLATFORM=wayland;xcb` por padrão,
-com fallback para X11).
+No Linux o app roda nativamente em Wayland (`QT_QPA_PLATFORM=wayland;xcb`
+por padrão, com fallback para X11).
+
+### macOS
+
+Com o Qt 6 instalado (`brew install qt cmake`, ou o instalador oficial), o
+build gera o bundle `TrackerHoras.app`; o `macdeployqt` copia o Qt para
+dentro dele e cria um `.dmg` distribuível:
+
+```bash
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+cmake --build build -j$(sysctl -n hw.ncpu)
+open build/TrackerHoras.app
+# empacotar (opcional)
+macdeployqt build/TrackerHoras.app -dmg
+```
+
+O ícone do bundle (`assets/tracker-horas.icns`) é gerado a partir de
+`assets/tracker-horas.svg`; se o SVG mudar, regenere o `.icns` também.
 
 ## Instalar e empacotar (.deb)
 
@@ -87,12 +106,22 @@ sudo apt install ./build/tracker-horas_*.deb
 
 O workflow [release.yml](.github/workflows/release.yml) compila em
 `ubuntu-24.04`, roda os testes, gera o `.deb` e publica tudo em uma release
-sempre que uma tag `v*` é enviada:
+sempre que uma tag `v*` é enviada. Em seguida, um job em `macos-14` compila
+um binário universal (Apple Silicon + Intel, macOS 12+), roda os testes e
+anexa `TrackerHoras-<versão>-macos.dmg` à mesma release:
 
 ```bash
 # 1. atualize VERSION no project() do CMakeLists.txt (a tag deve bater)
 git tag v0.1.0
 git push origin v0.1.0
+```
+
+O `.app` não é assinado com certificado da Apple nem notarizado (só assinatura
+ad-hoc), então o Gatekeeper bloqueia a primeira abertura. Depois de arrastar
+para Aplicativos, abra com botão direito → Abrir, ou libere pelo terminal:
+
+```bash
+xattr -dr com.apple.quarantine /Applications/TrackerHoras.app
 ```
 
 ## Testes
@@ -135,10 +164,11 @@ src/
 assets/
   style.qss       folha de estilo com tokens (@cor), estilo Adwaita
   tracker-horas.svg  ícone do app (janela, menu e pacote)
+  tracker-horas.icns ícone do bundle macOS (gerado a partir do SVG)
 packaging/
   tracker-horas.desktop  atalho de menu (instalado pelo .deb)
 .github/
-  workflows/release.yml  release automática (.deb) ao enviar tag v*
+  workflows/release.yml  release automática (.deb + .dmg) ao enviar tag v*
 tests/
   tst_model.cpp        domínio: status, horas, pausas, ajuste manual, formatação
   tst_storage.cpp      persistência JSON e ponte de meia-noite

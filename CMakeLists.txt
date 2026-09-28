@@ -40,10 +40,15 @@ target_link_libraries(tracker-horas PRIVATE Qt6::Widgets)
 
 # macOS: gera TrackerHoras.app (empacotado em .dmg pelo macdeployqt no CI)
 if(APPLE)
+    # ícone do Finder/Dock, gerado a partir de assets/tracker-horas.svg
+    target_sources(tracker-horas PRIVATE assets/tracker-horas.icns)
+    set_source_files_properties(assets/tracker-horas.icns PROPERTIES
+        MACOSX_PACKAGE_LOCATION Resources)
     set_target_properties(tracker-horas PROPERTIES OUTPUT_NAME "TrackerHoras")
 endif()
 set_target_properties(tracker-horas PROPERTIES
     MACOSX_BUNDLE TRUE
+    MACOSX_BUNDLE_ICON_FILE tracker-horas.icns
     MACOSX_BUNDLE_BUNDLE_NAME "Tracker Horas"
     MACOSX_BUNDLE_GUI_IDENTIFIER "io.github.ricardofachini.tracker-horas"
     MACOSX_BUNDLE_BUNDLE_VERSION ${PROJECT_VERSION}
